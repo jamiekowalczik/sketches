@@ -1,3 +1,12 @@
+// Purpose:
+//   This sketch will wait for an event to trigger input pin 4 and then will start a relay
+//   on input pin 5.  The relay will stay on until input pin 2 is pushed and then wait for 4 seconds 
+//   and start again until input pin 3 is pushed.  It will then wait for another event to trigger input pin 4.
+//   Hooking a movement sensor to pin 4 will trigger a relay on pin 5 to move a winshield wiper motor
+//   which moves a prop to a desired position, waits, and then brings it back to the starting position
+//   until the next movement.
+//   Subsitute code in functions as needed.
+
 // References:
 //   https://www.openhomeautomation.net/monitor-your-home-remotely-using-the-arduino-wifi-shield/
 //   http://www.geertlangereis.nl/Electronics/Pin_Change_Interrupts/PinChange_en.html
