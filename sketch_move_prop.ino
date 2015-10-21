@@ -5,7 +5,7 @@
 //   Hooking a movement sensor to pin 4 will trigger a relay on pin 5 to move a winshield wiper motor
 //   which moves a prop to a desired position(button on pin 2), waits, and then brings it back to the starting
 //   postion (button on pin 3) until the next movement.
-//   Subsitute code in functions as needed.
+//   Subsitute code in functions and pin assignments as needed.
 
 // References:
 //   https://www.openhomeautomation.net/monitor-your-home-remotely-using-the-arduino-wifi-shield/
