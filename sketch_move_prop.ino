@@ -1,3 +1,7 @@
+// References:
+//   https://www.openhomeautomation.net/monitor-your-home-remotely-using-the-arduino-wifi-shield/
+//   http://www.geertlangereis.nl/Electronics/Pin_Change_Interrupts/PinChange_en.html
+
 int movementInPin = 4; //pin to start this thing off.  Will be replaced with a motion sensor
 int movementVal = 1;
 int lastMovementVal = 1;
