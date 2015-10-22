@@ -84,6 +84,10 @@ void isr180() {
   if (extended180Val != vLastExtended180Val) {
     if (extended180Val == HIGH) {
       vCurValueExtended180 = 1;
+      //Used for testing...
+      digitalWrite(relay, HIGH);
+      Serial.print("Extended ");
+      Serial.println();
     } 
   }
   vLastExtended180Val = extended180Val;
@@ -94,12 +98,17 @@ void isr0() {
   if (extended0Val != vLastExtended0Val) {
     if (extended0Val == HIGH) {
       vCurValueExtended0 = 1;
+      //Used for testing...
+      digitalWrite(relay, LOW);
+      Serial.print("Retracted ");
+      Serial.println();
     } 
   }
   vLastExtended0Val = extended0Val;
 }
 
 void setup() {
+   Serial.begin(9600);
    pinMode(movementInPin, INPUT);
    pinMode(extended180InPin, INPUT);
    pinMode(extended0InPin, INPUT);
