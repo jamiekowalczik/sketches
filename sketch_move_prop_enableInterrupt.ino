@@ -17,12 +17,12 @@ int movementInPin = 4; //pin to start this thing off.  Will be replaced with a m
 int movementVal = 1;
 int lastMovementVal = 1;
 
-int extended180InPin = A0; //pin that determines when the wiper is fully extended.  For interrupt to work, use a compatible digial pin.
+int extended180InPin = A0; //pin that determines when the wiper is fully extended.
 int extended180Val = 1;
 volatile int vLastExtended180Val = 1;
 volatile int vCurValueExtended180 = 0;
 
-int extended0InPin = A1; //pin that determines when the wiper is reset to starting position.  For interrupt to work, use a compatible digial pin.
+int extended0InPin = A1; //pin that determines when the wiper is reset to starting position.
 int extended0Val = 1;
 volatile int vLastExtended0Val = 1;
 volatile int vCurValueExtended0 = 0;
