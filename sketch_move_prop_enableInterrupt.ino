@@ -88,6 +88,8 @@ void isrMovement() {
    int movementVal;
    movementVal = digitalRead(movementInPin);
    if (movementVal == HIGH) {
+      Serial.print("Movement detected ");
+      Serial.println();
       moveProp();
    } 
    delay(50);
