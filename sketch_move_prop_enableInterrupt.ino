@@ -123,15 +123,15 @@ void setup() {
 
    //Setup movement detection pin
    pinMode(movementInPin, INPUT_PULLUP);
-   enableInterrupt(movementInPin, isrMovement, CHANGE);
+   enableInterrupt(movementInPin, isrMovement, RISING);
 
    //Setup extended to 180 (extended) pin
    pinMode(extended180InPin, INPUT_PULLUP);
-   enableInterrupt(extended180InPin, isr180, CHANGE);
+   enableInterrupt(extended180InPin, isr180, RISING);
 
    //Setup extended to 0 (retracted) pin
    pinMode(extended0InPin, INPUT_PULLUP);
-   enableInterrupt(extended0InPin, isr0, CHANGE);
+   enableInterrupt(extended0InPin, isr0, RISING);
 
    //Run through one full cylce to reset our selves.. Delete if you don't want it..
    resetPropToStartingPosition();
