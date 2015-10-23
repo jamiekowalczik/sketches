@@ -34,47 +34,39 @@ void moveProp(){
       //Motion detected, reset button status values and start up the wipers
       vCurValueExtended180 = 0;
       vCurValueExtended0 = 0;
-      Serial.print("Waiting to reach the fully extended position (180 degrees). Starting movement. ");
-      Serial.println();
+      Serial.println("Waiting to reach the fully extended position (180 degrees). Starting movement. ");
       do{
          digitalWrite(relayOutPin, HIGH);
       }
       while (vCurValueExtended180 == 0);
       
       //Stop the relay and delay for a bit
-      Serial.print("Fully extended position has been reached (180 degrees). Pausing movement. ");
-      Serial.println();
+      Serial.println("Fully extended position has been reached (180 degrees). Pausing movement. ");
       digitalWrite(relayOutPin, LOW);
-      Serial.print("Delaying for a few seconds ");
-      Serial.println();
+      Serial.println("Delaying for a few seconds ");
       delay(5000);
       
       //Start the relay and return back to starting position
-      Serial.print("Waiting to reach the starting position (0 degrees). Starting movement. ");
-      Serial.println();
+      Serial.println("Waiting to reach the starting position (0 degrees). Starting movement. ");
       do{
          digitalWrite(relayOutPin, HIGH);
       }
       while (vCurValueExtended0 == 0);
 
       //Stop the relay and and sit and wait for another movement
-      Serial.print("Starting position has been reached (0 degrees). Stopping movement. ");
-      Serial.println();
+      Serial.println("Starting position has been reached (0 degrees). Stopping movement. ");
       digitalWrite(relayOutPin, LOW);
 
-      Serial.print("Delaying for a few more seconds ");
-      Serial.println();
+      Serial.println("Delaying for a few more seconds ");
       delay(5000);
       vInMotion = 0;
    }     
 }
 
 void resetPropToStartingPosition() {
-   Serial.print("Resetting to starting position ");
-   Serial.println();
+   Serial.println("Resetting to starting position ");
    //Start the relay and return back to starting position.
-   Serial.print("Waiting to reach the starting position (0 degrees). Starting movement. ");
-   Serial.println();
+   Serial.println("Waiting to reach the starting position (0 degrees). Starting movement. ");
    vInMotion = 1;
    do{
       digitalWrite(relayOutPin, HIGH);
@@ -82,31 +74,27 @@ void resetPropToStartingPosition() {
    while (vCurValueExtended0 == 0);
    
    //Stop the relay and and sit and wait for another movement
-   Serial.print("Starting position has been reached (0 degrees). Stopping movement. ");
-   Serial.println();
+   Serial.println("Starting position has been reached (0 degrees). Stopping movement. ");
    digitalWrite(relayOutPin, LOW);
    vInMotion = 0;
 }
 
 void isrMovement() {
-   Serial.print("Movement detected ");
-   Serial.println();
+   Serial.println("Movement detected ");
    moveProp();
 }
 
 void isr180() {
    //Used for testing.  Remove digitalWrite line for production...
    digitalWrite(relayOutPin, HIGH);
-   Serial.print("Extended ");
-   Serial.println();
+   Serial.println("Extended ");
    vCurValueExtended180 = 1;
 }
 
 void isr0() {
    //Used for testing.  Remove digitalWrite line for production...
    digitalWrite(relayOutPin, LOW);
-   Serial.print("Retracted ");
-   Serial.println();
+   Serial.println("Retracted ");
    vCurValueExtended0 = 1;
 }
 
@@ -115,8 +103,7 @@ void setup() {
    Serial.begin(9600);
    Serial.println("");
    Serial.println("----------");
-   Serial.print("Setting up ");
-   Serial.println();
+   Serial.println("Setting up ");
 
    //Setup relay pin
    pinMode(relayOutPin, OUTPUT);
