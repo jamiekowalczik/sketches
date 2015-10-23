@@ -111,7 +111,6 @@ void isr0() {
   int extended0Val;
   extended0Val = digitalRead(extended0InPin);
   if (extended0Val == HIGH) {
-    
      vCurValueExtended0 = 1;
      //Used for testing...
      digitalWrite(relay, LOW);
