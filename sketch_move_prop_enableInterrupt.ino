@@ -99,11 +99,11 @@ void isr180() {
    int extended180Val;
    extended180Val = digitalRead(extended180InPin);
    if (extended180Val == HIGH) {
-     vCurValueExtended180 = 1;
-     //Used for testing...
+     //Used for testing.  Remove digitalWrite line for production...
      digitalWrite(relayOutPin, HIGH);
      Serial.print("Extended ");
      Serial.println();
+     vCurValueExtended180 = 1;
    } 
 }
 
@@ -111,11 +111,11 @@ void isr0() {
   int extended0Val;
   extended0Val = digitalRead(extended0InPin);
   if (extended0Val == HIGH) {
-     vCurValueExtended0 = 1;
-     //Used for testing...
+     //Used for testing.  Remove digitalWrite line for production...
      digitalWrite(relayOutPin, LOW);
      Serial.print("Retracted ");
      Serial.println();
+     vCurValueExtended0 = 1;
   } 
 }
 
