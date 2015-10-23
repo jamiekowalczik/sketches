@@ -93,7 +93,6 @@ void isrMovement() {
       Serial.println();
       moveProp();
    } 
-   delay(50);
 }
 
 void isr180() {
