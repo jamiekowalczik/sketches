@@ -88,34 +88,25 @@ void resetPropToStartingPosition() {
 }
 
 void isrMovement() {
-   int movementVal = digitalRead(movementInPin);
-   if (movementVal == HIGH) {
-      Serial.print("Movement detected ");
-      Serial.println();
-      moveProp();
-   } 
+   Serial.print("Movement detected ");
+   Serial.println();
+   moveProp();
 }
 
 void isr180() {
-   int extended180Val = digitalRead(extended180InPin);
-   if (extended180Val == HIGH) {
-     //Used for testing.  Remove digitalWrite line for production...
-     digitalWrite(relayOutPin, HIGH);
-     Serial.print("Extended ");
-     Serial.println();
-     vCurValueExtended180 = 1;
-   } 
+   //Used for testing.  Remove digitalWrite line for production...
+   digitalWrite(relayOutPin, HIGH);
+   Serial.print("Extended ");
+   Serial.println();
+   vCurValueExtended180 = 1;
 }
 
 void isr0() {
-  int extended0Val = digitalRead(extended0InPin);
-  if (extended0Val == HIGH) {
-     //Used for testing.  Remove digitalWrite line for production...
-     digitalWrite(relayOutPin, LOW);
-     Serial.print("Retracted ");
-     Serial.println();
-     vCurValueExtended0 = 1;
-  } 
+   //Used for testing.  Remove digitalWrite line for production...
+   digitalWrite(relayOutPin, LOW);
+   Serial.print("Retracted ");
+   Serial.println();
+   vCurValueExtended0 = 1;
 }
 
 void setup() {
