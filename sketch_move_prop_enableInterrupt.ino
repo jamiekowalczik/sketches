@@ -126,18 +126,20 @@ void setup() {
    Serial.begin(9600);
    Serial.print("Setting up ");
    Serial.println();
-   
-   pinMode(movementInPin, INPUT);
-  
+
+   //Setup relay pin
    pinMode(relay, OUTPUT);
    digitalWrite(relay, LOW);
 
+   //Setup movement detection pin
    pinMode(movementInPin, INPUT_PULLUP);
    enableInterrupt(movementInPin, isrMovement, CHANGE);
-   
+
+   //Setup extended to 180 (extended) pin
    pinMode(extended180InPin, INPUT_PULLUP);
    enableInterrupt(extended180InPin, isr180, CHANGE);
 
+   //Setup extended to 0 (retracted) pin
    pinMode(extended0InPin, INPUT_PULLUP);
    enableInterrupt(extended0InPin, isr0, CHANGE);
 
