@@ -122,6 +122,7 @@ void isr0() {
 }
 
 void setup() {
+   //Start some debugging
    Serial.begin(9600);
    Serial.print("Setting up ");
    Serial.println();
