@@ -141,6 +141,7 @@ void setup() {
    pinMode(extended0InPin, INPUT_PULLUP);
    enableInterrupt(extended0InPin, isr0, CHANGE);
 
+   //Run through one full cylce to reset our selves.. Delete if you don't want it..
    resetPropToStartingPosition();
 }
 
