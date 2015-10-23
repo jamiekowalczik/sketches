@@ -13,34 +13,17 @@
 
 #include <EnableInterrupt.h>
 
-int movementInPin = 4; //pin to start this thing off.  Will be replaced with a motion sensor
-int movementVal = 1;
-int lastMovementVal = 1;
+// Pin Definitions
+#define movementInPin 4 //pin to start this thing off.  Will be replaced with a motion sensor.
+#define extended180InPin A0 //pin that determines when the wiper is fully extended.  For interrupt to work, use a compatible digial pin.
+#define extended0InPin A1 //pin that determines when the wiper is reset to starting position.  For interrupt to work, use a compatible digial pin.
+#define relay 5 //pin that the relay is connected to.
 
-int extended180InPin = A0; //pin that determines when the wiper is fully extended.
-int extended180Val = 1;
-volatile int vLastExtended180Val = 1;
+//Global variables for button interrupts
 volatile int vCurValueExtended180 = 0;
-
-int extended0InPin = A1; //pin that determines when the wiper is reset to starting position.
-int extended0Val = 1;
-volatile int vLastExtended0Val = 1;
 volatile int vCurValueExtended0 = 0;
 
-int relay = 5; //pin that controls the relay to move the prop
-
 int inMotion = 0;
-
-void lookForMotionLoop() {
-  movementVal = digitalRead(movementInPin);
-  if (movementVal != lastMovementVal) {
-    if (movementVal == HIGH) {
-       moveProp();
-    } 
-    delay(50);
-  }
-  lastMovementVal = movementVal;
-}
 
 void moveProp(){
    if(inMotion == 0){
@@ -81,36 +64,42 @@ void resetPropToStartingPosition() {
    digitalWrite(relay, LOW);
 }
 
+void isrMovement() {
+   int movementVal;
+   movementVal = digitalRead(movementInPin);
+   if (movementVal == HIGH) {
+      moveProp();
+   } 
+   delay(50);
+}
+
 void isr180() {
-  extended180Val = digitalRead(extended180InPin);
-  if (extended180Val != vLastExtended180Val) {
-    if (extended180Val == HIGH) {
-      vCurValueExtended180 = 1;
-      //Used for testing...
-      digitalWrite(relay, HIGH);
-      Serial.print("Extended ");
-      Serial.println();
-    } 
-  }
-  vLastExtended180Val = extended180Val;
+   int extended180Val;
+   extended180Val = digitalRead(extended180InPin);
+   if (extended180Val == HIGH) {
+     vCurValueExtended180 = 1;
+     //Used for testing...
+     digitalWrite(relay, HIGH);
+     Serial.print("Extended ");
+     Serial.println();
+   } 
 }
 
 void isr0() {
+  int extended0Val;
   extended0Val = digitalRead(extended0InPin);
-  if (extended0Val != vLastExtended0Val) {
-    if (extended0Val == HIGH) {
-      vCurValueExtended0 = 1;
-      //Used for testing...
-      digitalWrite(relay, LOW);
-      Serial.print("Retracted ");
-      Serial.println();
-    } 
-  }
-  vLastExtended0Val = extended0Val;
+  if (extended0Val == HIGH) {
+     vCurValueExtended0 = 1;
+     //Used for testing...
+     digitalWrite(relay, LOW);
+     Serial.print("Retracted ");
+     Serial.println();
+  } 
 }
 
 void setup() {
    Serial.begin(9600);
+   
    pinMode(movementInPin, INPUT);
   
    pinMode(relay, OUTPUT);
@@ -122,9 +111,9 @@ void setup() {
    pinMode(extended0InPin, INPUT_PULLUP);
    enableInterrupt(extended0InPin, isr0, CHANGE);
 
-   //resetPropToStartingPosition();
+   resetPropToStartingPosition();
 }
 
 void loop() {
-  lookForMotionLoop();
+
 }
