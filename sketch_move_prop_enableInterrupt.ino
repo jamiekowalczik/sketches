@@ -32,35 +32,55 @@ void moveProp(){
       //and start up the wipers
       vCurValueExtended180 = 0;
       vCurValueExtended0 = 0;
+      Serial.print("Waiting to reach the fully extended position (180 degrees). Starting movement. ");
+      Serial.println();
       do{
          digitalWrite(relay, HIGH);
       }
       while (vCurValueExtended180 == 0);
       
       //Stop the relay and delay for a bit
+      Serial.print("Fully extended position has been reached (180 degrees). Pausing movement. ");
+      Serial.println();
       digitalWrite(relay, LOW);
+      Serial.print("Delaying for a few seconds ");
+      Serial.println();
       delay(4000);
       
       //Start the relay and return back to starting position
+      Serial.print("Waiting to reach the starting position (0 degrees). Starting movement. ");
+      Serial.println();
       do{
          digitalWrite(relay, HIGH);
       }
       while (vCurValueExtended0 == 0);
 
       //Stop the relay and and sit and wait for another movement
+      Serial.print("Starting position has been reached (0 degrees). Stopping movement. ");
+      Serial.println();
       digitalWrite(relay, LOW);
+
+      Serial.print("Delaying for a few more seconds ");
+      Serial.println();
+      delay(8000);
       inMotion = 0;
    }     
 }
 
 void resetPropToStartingPosition() {
+   Serial.print("Resetting to starting position ");
+   Serial.println();
    //Start the relay and return back to starting position.
+   Serial.print("Waiting to reach the starting position (0 degrees). Starting movement. ");
+   Serial.println();
    do{
       digitalWrite(relay, HIGH);
    }
    while (vCurValueExtended0 == 0);
-
+   
    //Stop the relay and and sit and wait for another movement
+   Serial.print("Starting position has been reached (0 degrees). Stopping movement. ");
+   Serial.println();
    digitalWrite(relay, LOW);
 }
 
@@ -89,6 +109,7 @@ void isr0() {
   int extended0Val;
   extended0Val = digitalRead(extended0InPin);
   if (extended0Val == HIGH) {
+    
      vCurValueExtended0 = 1;
      //Used for testing...
      digitalWrite(relay, LOW);
@@ -99,6 +120,8 @@ void isr0() {
 
 void setup() {
    Serial.begin(9600);
+   Serial.print("Setting up ");
+   Serial.println();
    
    pinMode(movementInPin, INPUT);
   
@@ -115,5 +138,5 @@ void setup() {
 }
 
 void loop() {
-
+  
 }
