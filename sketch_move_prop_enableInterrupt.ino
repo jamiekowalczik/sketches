@@ -11,6 +11,7 @@
 //   https://www.openhomeautomation.net/monitor-your-home-remotely-using-the-arduino-wifi-shield/
 //   https://github.com/GreyGnome/EnableInterrupt/wiki/Usage#Summary
 
+//Import this phenominal library
 #include <EnableInterrupt.h>
 
 // Pin Definitions
@@ -23,6 +24,7 @@
 volatile int vCurValueExtended180 = 0;
 volatile int vCurValueExtended0 = 0;
 
+//Global variable which determines whether or not the prop is in motion
 int inMotion = 0;
 
 void moveProp(){
