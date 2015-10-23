@@ -74,6 +74,7 @@ void resetPropToStartingPosition() {
    //Start the relay and return back to starting position.
    Serial.print("Waiting to reach the starting position (0 degrees). Starting movement. ");
    Serial.println();
+   vInMotion = 1;
    do{
       digitalWrite(relayOutPin, HIGH);
    }
@@ -83,6 +84,7 @@ void resetPropToStartingPosition() {
    Serial.print("Starting position has been reached (0 degrees). Stopping movement. ");
    Serial.println();
    digitalWrite(relayOutPin, LOW);
+   vInMotion = 0;
 }
 
 void isrMovement() {
@@ -119,6 +121,8 @@ void isr0() {
 void setup() {
    //Start some debugging
    Serial.begin(9600);
+   Serial.println("");
+   Serial.println("----------");
    Serial.print("Setting up ");
    Serial.println();
 
