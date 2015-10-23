@@ -10,6 +10,7 @@
 // References:
 //   https://www.openhomeautomation.net/monitor-your-home-remotely-using-the-arduino-wifi-shield/
 //   https://github.com/GreyGnome/EnableInterrupt/wiki/Usage#Summary
+//   -Library Download: https://bintray.com/artifact/download/greygnome/generic/enableinterrupt-0.2.zip
 
 //Import this phenominal library
 #include <EnableInterrupt.h>
