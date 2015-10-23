@@ -30,8 +30,7 @@ int inMotion = 0;
 void moveProp(){
    if(inMotion == 0){
       inMotion = 1;
-      //Motion detected, reset button status values
-      //and start up the wipers
+      //Motion detected, reset button status values and start up the wipers
       vCurValueExtended180 = 0;
       vCurValueExtended0 = 0;
       Serial.print("Waiting to reach the fully extended position (180 degrees). Starting movement. ");
