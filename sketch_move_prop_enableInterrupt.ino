@@ -1,8 +1,8 @@
 // Purpose:
-//   This sketch will wait for input pin 8 to be pushed and then will start a relay on putput pin 7.
+//   This sketch will wait for input pin 4 to be pushed and then will start a relay on putput pin 5.
 //   The relay will stay on until pin A0 has a state change.  The relay will then turn off for 4 seconds 
-//   and start again until pin A1 is has a state change.  It will then wait for another event to trigger input pin 8.
-//   Hooking a movement sensor to pin 8 will trigger a relay on pin 7 to move a winshield wiper motor
+//   and start again until pin A1 is has a state change.  It will then wait for another event to trigger input pin 4.
+//   Hooking a movement sensor to pin 4 will trigger a relay on pin 5 to move a winshield wiper motor
 //   which moves a prop to a desired position(button on pin A0), waits, and then brings it back to the starting
 //   postion (button on pin A1) until the next movement.
 //   Subsitute code in functions and pin assignments as needed.
@@ -113,6 +113,7 @@ void isr0() {
   int extended0Val;
   extended0Val = digitalRead(extended0InPin);
   if (extended0Val == HIGH) {
+    
      vCurValueExtended0 = 1;
      //Used for testing...
      digitalWrite(relay, LOW);
@@ -131,6 +132,9 @@ void setup() {
    pinMode(relay, OUTPUT);
    digitalWrite(relay, LOW);
 
+   pinMode(movementInPin, INPUT_PULLUP);
+   enableInterrupt(movementInPin, isrMovement, CHANGE);
+   
    pinMode(extended180InPin, INPUT_PULLUP);
    enableInterrupt(extended180InPin, isr180, CHANGE);
 
@@ -141,5 +145,5 @@ void setup() {
 }
 
 void loop() {
-  
+
 }
