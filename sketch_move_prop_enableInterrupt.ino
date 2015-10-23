@@ -16,9 +16,9 @@
 
 // Pin Definitions
 #define movementInPin 8 //pin to start this thing off.  Will be replaced with a motion sensor.
-#define extended180InPin A0 //pin that determines when the wiper is fully extended.  For interrupt to work, use a compatible digial pin.
-#define extended0InPin A1 //pin that determines when the wiper is reset to starting position.  For interrupt to work, use a compatible digial pin.
 #define relayOutPin 7 //pin that the relay is connected to.
+#define extended180InPin A0 //pin that determines when the wiper is fully extended.  Use EnableInterrupt Library.
+#define extended0InPin A1 //pin that determines when the wiper is reset to starting position.  Use EnableInterrupt Library.
 
 //Global variables for button interrupts
 volatile int vCurValueExtended180 = 0;
