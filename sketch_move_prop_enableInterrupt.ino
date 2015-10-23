@@ -18,7 +18,7 @@
 #define movementInPin 8 //pin to start this thing off.  Will be replaced with a motion sensor.
 #define extended180InPin A0 //pin that determines when the wiper is fully extended.  For interrupt to work, use a compatible digial pin.
 #define extended0InPin A1 //pin that determines when the wiper is reset to starting position.  For interrupt to work, use a compatible digial pin.
-#define relay 7 //pin that the relay is connected to.
+#define relayOutPin 7 //pin that the relay is connected to.
 
 //Global variables for button interrupts
 volatile int vCurValueExtended180 = 0;
@@ -36,14 +36,14 @@ void moveProp(){
       Serial.print("Waiting to reach the fully extended position (180 degrees). Starting movement. ");
       Serial.println();
       do{
-         digitalWrite(relay, HIGH);
+         digitalWrite(relayOutPin, HIGH);
       }
       while (vCurValueExtended180 == 0);
       
       //Stop the relay and delay for a bit
       Serial.print("Fully extended position has been reached (180 degrees). Pausing movement. ");
       Serial.println();
-      digitalWrite(relay, LOW);
+      digitalWrite(relayOutPin, LOW);
       Serial.print("Delaying for a few seconds ");
       Serial.println();
       delay(4000);
@@ -52,14 +52,14 @@ void moveProp(){
       Serial.print("Waiting to reach the starting position (0 degrees). Starting movement. ");
       Serial.println();
       do{
-         digitalWrite(relay, HIGH);
+         digitalWrite(relayOutPin, HIGH);
       }
       while (vCurValueExtended0 == 0);
 
       //Stop the relay and and sit and wait for another movement
       Serial.print("Starting position has been reached (0 degrees). Stopping movement. ");
       Serial.println();
-      digitalWrite(relay, LOW);
+      digitalWrite(relayOutPin, LOW);
 
       Serial.print("Delaying for a few more seconds ");
       Serial.println();
@@ -75,14 +75,14 @@ void resetPropToStartingPosition() {
    Serial.print("Waiting to reach the starting position (0 degrees). Starting movement. ");
    Serial.println();
    do{
-      digitalWrite(relay, HIGH);
+      digitalWrite(relayOutPin, HIGH);
    }
    while (vCurValueExtended0 == 0);
    
    //Stop the relay and and sit and wait for another movement
    Serial.print("Starting position has been reached (0 degrees). Stopping movement. ");
    Serial.println();
-   digitalWrite(relay, LOW);
+   digitalWrite(relayOutPin, LOW);
 }
 
 void isrMovement() {
@@ -101,7 +101,7 @@ void isr180() {
    if (extended180Val == HIGH) {
      vCurValueExtended180 = 1;
      //Used for testing...
-     digitalWrite(relay, HIGH);
+     digitalWrite(relayOutPin, HIGH);
      Serial.print("Extended ");
      Serial.println();
    } 
@@ -113,7 +113,7 @@ void isr0() {
   if (extended0Val == HIGH) {
      vCurValueExtended0 = 1;
      //Used for testing...
-     digitalWrite(relay, LOW);
+     digitalWrite(relayOutPin, LOW);
      Serial.print("Retracted ");
      Serial.println();
   } 
@@ -126,8 +126,8 @@ void setup() {
    Serial.println();
 
    //Setup relay pin
-   pinMode(relay, OUTPUT);
-   digitalWrite(relay, LOW);
+   pinMode(relayOutPin, OUTPUT);
+   digitalWrite(relayOutPin, LOW);
 
    //Setup movement detection pin
    pinMode(movementInPin, INPUT_PULLUP);
