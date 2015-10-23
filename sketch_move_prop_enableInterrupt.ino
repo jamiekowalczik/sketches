@@ -10,7 +10,6 @@
 // References:
 //   https://www.openhomeautomation.net/monitor-your-home-remotely-using-the-arduino-wifi-shield/
 //   https://github.com/GreyGnome/EnableInterrupt/wiki/Usage#Summary
-//   -Library Download: https://bintray.com/artifact/download/greygnome/generic/enableinterrupt-0.2.zip
 
 //Import this phenominal library
 #include <EnableInterrupt.h>
@@ -26,11 +25,11 @@ volatile int vCurValueExtended180 = 0;
 volatile int vCurValueExtended0 = 0;
 
 //Global variable which determines whether or not the prop is in motion
-int inMotion = 0;
+volatile int vInMotion = 0;
 
 void moveProp(){
-   if(inMotion == 0){
-      inMotion = 1;
+   if(vInMotion == 0){
+      vInMotion = 1;
       //Motion detected, reset button status values and start up the wipers
       vCurValueExtended180 = 0;
       vCurValueExtended0 = 0;
@@ -47,7 +46,7 @@ void moveProp(){
       digitalWrite(relayOutPin, LOW);
       Serial.print("Delaying for a few seconds ");
       Serial.println();
-      delay(4000);
+      delay(5000);
       
       //Start the relay and return back to starting position
       Serial.print("Waiting to reach the starting position (0 degrees). Starting movement. ");
@@ -64,8 +63,8 @@ void moveProp(){
 
       Serial.print("Delaying for a few more seconds ");
       Serial.println();
-      delay(8000);
-      inMotion = 0;
+      delay(5000);
+      vInMotion = 0;
    }     
 }
 
@@ -87,8 +86,7 @@ void resetPropToStartingPosition() {
 }
 
 void isrMovement() {
-   int movementVal;
-   movementVal = digitalRead(movementInPin);
+   int movementVal = digitalRead(movementInPin);
    if (movementVal == HIGH) {
       Serial.print("Movement detected ");
       Serial.println();
@@ -97,8 +95,7 @@ void isrMovement() {
 }
 
 void isr180() {
-   int extended180Val;
-   extended180Val = digitalRead(extended180InPin);
+   int extended180Val = digitalRead(extended180InPin);
    if (extended180Val == HIGH) {
      //Used for testing.  Remove digitalWrite line for production...
      digitalWrite(relayOutPin, HIGH);
@@ -109,8 +106,7 @@ void isr180() {
 }
 
 void isr0() {
-  int extended0Val;
-  extended0Val = digitalRead(extended0InPin);
+  int extended0Val = digitalRead(extended0InPin);
   if (extended0Val == HIGH) {
      //Used for testing.  Remove digitalWrite line for production...
      digitalWrite(relayOutPin, LOW);
@@ -146,6 +142,5 @@ void setup() {
    resetPropToStartingPosition();
 }
 
-void loop() {
-
+void loop() { 
 }
