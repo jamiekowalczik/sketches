@@ -126,6 +126,21 @@ int read_keyboard() {
   }
 }
 
+int read_keyboard1() {
+  int button, button2, pressed_button;  
+  button = getButton();
+  if(button != 0) { 
+    Serial.println(button);
+    if(button == 1) return btnLEFT;
+    if(button == 2) return btnUP;
+    if(button == 3) return btnDOWN;
+    if(button == 4) return btnRIGHT;
+    if(button == 5) return btnENTER;
+  }else{
+    return btnNONE;
+  }
+}
+
 int getButton() {
   int i, z, sum;
   int button;
@@ -136,12 +151,12 @@ int getButton() {
      sum += analogRead(keyboard_AnalogInput);
   }
   z = sum / 4;
-  if (z > 1021) button = 0;                                           
+  if (z > 1000) button = 0;                                           
   else if (z >= 0 && z < 10) button = 1; //LEFT                    
-  else if (z > 140 && z < 150) button = 2; //UP                
-  else if (z > 320 && z < 335) button = 3; //DOWN                
-  else if (z > 500 && z < 515) button = 4; //RIGHT           
-  else if (z > 730 && z < 750) button = 5; //ENTER
+  else if (z > 135 && z < 155) button = 2; //UP                
+  else if (z > 315 && z < 335) button = 3; //DOWN                
+  else if (z > 495 && z < 515) button = 4; //RIGHT           
+  else if (z > 725 && z < 745) button = 5; //ENTER
   else button = 0;
 
   return button;
