@@ -152,7 +152,7 @@ int getButton() {
   }
   z = sum / 4;
   if (z > 1000) button = 0;                                           
-  else if (z >= 0 && z < 10) button = 1; //LEFT                    
+  else if (z >= 0 && z < 20) button = 1; //LEFT                    
   else if (z > 135 && z < 155) button = 2; //UP                
   else if (z > 315 && z < 335) button = 3; //DOWN                
   else if (z > 495 && z < 515) button = 4; //RIGHT           
