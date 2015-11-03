@@ -65,6 +65,46 @@ void updateConfigID() {
   }
 }
 
+void emptyCmd() {
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("Emptying Reservoir");
+  delay(1000);
+  lcd.setCursor(0,1);
+  lcd.print(".");
+  delay(1000);
+  lcd.print(".");
+  delay(1000);
+  lcd.print(".");
+  delay(1000);
+  lcd.print(".");
+  delay(1000);
+  lcd.print(".");
+  delay(1000);
+  lcd.setCursor(0,2);
+  lcd.print(" ****Completed****  ");
+}
+
+void fillCmd() {
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("Filling Reservoir");
+  delay(1000);
+  lcd.setCursor(0,1);
+  lcd.print(".");
+  delay(1000);
+  lcd.print(".");
+  delay(1000);
+  lcd.print(".");
+  delay(1000);
+  lcd.print(".");
+  delay(1000);
+  lcd.print(".");
+  delay(1000);
+  lcd.setCursor(0,2);
+  lcd.print(" ****Completed****  ");
+}
+
 MENU(showSensorData,"Sensor Data",
    OP("Water Level: High",nothing),
    OP("Water Temp: 73 F",nothing),
@@ -74,8 +114,8 @@ MENU(showSensorData,"Sensor Data",
 );
 
 MENU(actionMenu,"Action",
-   OP("Fill",nothing),
-   OP("Empty",nothing)
+   OP("Fill",fillCmd),
+   OP("Empty",emptyCmd)
 );
 
 MENU(mainMenu,"Main",
@@ -142,12 +182,10 @@ int read_keyboard1() {
 }
 
 int getButton() {
-  int i, z, sum;
-  int button;
+  int i, z, button;
+  int sum = 0;
 
-  sum = 0;
-  for (i=0; i < 4; i++)
-  {
+  for (i=0; i < 4; i++) {
      sum += analogRead(keyboard_AnalogInput);
   }
   z = sum / 4;
@@ -233,6 +271,5 @@ void loop()
 {
   //serial can use numbers or +/- and Enter=* Esc=/ to navigate (nav keys can be redefined)
   mainMenu.poll(menu_lcd,allIn);
-  //mainMenu.poll(menu_lcd,mykb);
   //loopRadio();
 }
