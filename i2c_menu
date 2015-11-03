@@ -1,0 +1,234 @@
+//Import this phenominal library
+#include <EnableInterrupt.h>
+#include <EEPROM.h>
+#include <SPI.h>
+#include "nRF24L01.h"
+#include "RF24.h"
+#include "printf.h"
+
+#include <HardwareSerial.h>
+#include <Wire.h> 
+#include <LiquidCrystal_I2C.h>
+#include <menu.h>//menu macros and objects
+//#include <pcint.h>
+//#include <quadEncoder.h>
+#include <genericKeyboard.h>
+#include <keyStream.h>
+#include <chainStream.h>
+#include <menuLCDs.h>//F. Malpartida LCD's
+#include <menuFields.h>
+
+//Variables containing data we want to keep persistent
+int ConfigIDInt1;
+int ConfigIDInt2;
+int lastConfigIDJoined;
+int ConfigIDJoined;
+
+//Variables for reading/writing persistent data
+//Vars for reading & writing settings
+byte xeeConfigIDInt1;
+byte xeeConfigIDInt2;
+int addrConfigIDInt1 = 1;
+int addrConfigIDInt2 = 2;
+
+// Pin Definitions
+#define pinEnter A3
+
+#define keyboard_AnalogInput 3
+
+#define btnRIGHT  menu::enterCode
+#define btnUP     menu::upCode
+#define btnDOWN   menu::downCode
+#define btnLEFT   menu::escCode
+#define btnENTER  menu::enterCode
+#define btnNONE   -1
+
+LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE);  // Set the LCD I2C address
+menuLCD menu_lcd(lcd,20,4);//menu output device
+
+void nothing() {}
+
+void saveConfigIDInt1(int i) {
+  xeeConfigIDInt1 = byte(i);
+  EEPROM.write(addrConfigIDInt1,xeeConfigIDInt1);
+}
+
+void saveConfigIDInt2(int i) {
+  xeeConfigIDInt2 = byte(i);
+  EEPROM.write(addrConfigIDInt2,xeeConfigIDInt2);
+}
+
+void readConfig() {
+  xeeConfigIDInt1 = EEPROM.read(addrConfigIDInt1);
+  ConfigIDJoined = int(xeeConfigIDInt1);
+  if (ConfigIDJoined < 0 || ConfigIDJoined >99){
+     ConfigIDJoined = 0;
+  }
+  lastConfigIDJoined = ConfigIDJoined;
+}
+
+void updateConfigID() {
+  if (ConfigIDJoined != lastConfigIDJoined) {
+    Serial.println(ConfigIDJoined);
+    saveConfigIDInt1(ConfigIDJoined);
+    lastConfigIDJoined = ConfigIDJoined;
+  }
+}
+
+MENU(showSensorData,"Sensor Data",
+   OP("Water Level: High",nothing),
+   OP("Water Temp: 73 F",nothing),
+   OP("Room Temp: 78 F",nothing),
+   OP("Room Humidity: 32 %",nothing),
+   OP("Water Level: High",nothing),
+   OP("Status: Idle",nothing)
+);
+
+MENU(actionMenu,"Action",
+   OP("Fill",nothing),
+   OP("Empty",nothing)
+);
+
+MENU(mainMenu,"Main",
+  SUBMENU(showSensorData),
+  FIELD(ConfigIDJoined,"Unit ID","",0,100,10,1,updateConfigID),
+  SUBMENU(actionMenu),
+  OP("Setup",nothing)
+);
+
+RF24 radio(9,10);
+// Radio pipe addresses for the 2 nodes to communicate.
+const uint64_t pipes[2] = { 0xF0F0F0F0E1LL, 0xF0F0F0F0D2LL };
+
+void sendCallback(unsigned short callback){
+   // First, stop listening so we can talk
+   radio.stopListening();
+
+   // Send the final one back.
+   radio.write( &callback, sizeof(unsigned short) );
+   printf("Sent response.\n\r");
+
+   // Now, resume listening so we catch the next packets.
+   radio.startListening();
+}
+
+int old_button = 0;
+
+int read_keyboard() {
+  int button, button2, pressed_button;  
+  button = getButton();
+  if (button != old_button) {
+      delay(50);        // debounce
+      button2 = getButton();
+
+      if (button == button2) {
+         old_button = button;
+         pressed_button = button;
+         if(button != 0) { 
+           if(button == 1) return btnLEFT;
+           if(button == 2) return btnUP;
+           if(button == 3) return btnDOWN;
+           if(button == 4) return btnRIGHT;
+           if(button == 5) return btnENTER;
+         }
+      }
+  }else{
+    return btnNONE;
+  }
+}
+
+int getButton() {
+  int i, z, sum;
+  int button;
+
+  sum = 0;
+  for (i=0; i < 4; i++)
+  {
+     sum += analogRead(keyboard_AnalogInput);
+  }
+  z = sum / 4;
+  if (z > 1021) button = 0;                                           
+  else if (z >= 0 && z < 10) button = 1; //LEFT                    
+  else if (z > 140 && z < 150) button = 2; //UP                
+  else if (z > 320 && z < 335) button = 3; //DOWN                
+  else if (z > 500 && z < 515) button = 4; //RIGHT           
+  else if (z > 730 && z < 750) button = 5; //ENTER
+  else button = 0;
+
+  return button;
+}
+
+genericKeyboard mykb(read_keyboard);
+ 
+Stream* in2[]={&mykb,&Serial};
+chainStream<2> allIn(in2);
+
+void performAction(unsigned char rawMessage){
+   unsigned short action, piid, deviceid, callback;
+   
+   //int input_number = int(rawMessage);
+   //action = (input_number%10);
+   //deviceid = ((input_number/10)%10);
+   //piid = ((input_number/100)%10);
+
+   //if (action == 0 || action ==1){
+   //   callback = action;
+   //   doAction(piid, deviceid, action);
+   //}else if(action == 2){
+   //   callback = getState(piid, deviceid);
+   //}
+   callback=0;
+   sendCallback(callback);
+}
+
+void loopRadio() {
+   // if there is data ready
+   if ( radio.available() ){
+      // Dump the payloads until we've gotten everything
+      unsigned short message;
+      bool done;
+      // char * new;
+      //unsigned short rawMessage; 
+      unsigned char rawMessage;
+      done = false;
+      while ( radio.available() ){
+        // Fetch the payload, and see if this was the last one.
+        radio.read( &rawMessage, sizeof(unsigned long) );
+        // Spew it
+        printf("Got message %d...",rawMessage); 
+        Serial.println(rawMessage);
+        performAction(rawMessage);
+        delay(10);
+      }
+   } 
+}
+
+void setup()
+{
+  Serial.begin(9600);
+  readConfig();
+   
+  Wire.begin();
+  lcd.begin(20,4);
+  lcd.print("Ok"); 
+  
+  //pinMode(pinEnter,INPUT);//make it an input
+  //digitalWrite(pinEnter,HIGH);//activate pull-up on pin 4
+
+  //radio.begin();
+  //  radio.setAutoAck(1);                    // Ensure autoACK is enabled
+  //radio.setRetries(15,15);
+
+  //radio.openWritingPipe(pipes[1]);
+  //radio.openReadingPipe(1,pipes[0]);
+  //radio.startListening();
+  //radio.printDetails();
+}
+
+void loop()
+{
+  //serial can use numbers or +/- and Enter=* Esc=/ to navigate (nav keys can be redefined)
+  mainMenu.poll(menu_lcd,allIn);
+  //mainMenu.poll(menu_lcd,mykb);
+  //loopRadio();
+}
