@@ -13,27 +13,22 @@
 //#include <pcint.h>
 //#include <quadEncoder.h>
 #include <genericKeyboard.h>
-#include <keyStream.h>
+//#include <keyStream.h>
 #include <chainStream.h>
 #include <menuLCDs.h>//F. Malpartida LCD's
 #include <menuFields.h>
 
 //Variables containing data we want to keep persistent
-int ConfigIDInt1;
-int ConfigIDInt2;
-int lastConfigIDJoined;
-int ConfigIDJoined;
+int lastConfigID;
+int ConfigID;
 
 //Variables for reading/writing persistent data
 //Vars for reading & writing settings
-byte xeeConfigIDInt1;
-byte xeeConfigIDInt2;
-int addrConfigIDInt1 = 1;
-int addrConfigIDInt2 = 2;
+byte xeeConfigID;
+int addrConfigID = 1;
 
 // Pin Definitions
 #define pinEnter A3
-
 #define keyboard_AnalogInput 3
 
 #define btnRIGHT  menu::enterCode
@@ -48,30 +43,25 @@ menuLCD menu_lcd(lcd,20,4);//menu output device
 
 void nothing() {}
 
-void saveConfigIDInt1(int i) {
-  xeeConfigIDInt1 = byte(i);
-  EEPROM.write(addrConfigIDInt1,xeeConfigIDInt1);
-}
-
-void saveConfigIDInt2(int i) {
-  xeeConfigIDInt2 = byte(i);
-  EEPROM.write(addrConfigIDInt2,xeeConfigIDInt2);
+void saveConfigID(int i) {
+  xeeConfigID = byte(i);
+  EEPROM.write(addrConfigID,xeeConfigID);
 }
 
 void readConfig() {
-  xeeConfigIDInt1 = EEPROM.read(addrConfigIDInt1);
-  ConfigIDJoined = int(xeeConfigIDInt1);
-  if (ConfigIDJoined < 0 || ConfigIDJoined >99){
-     ConfigIDJoined = 0;
+  xeeConfigID = EEPROM.read(addrConfigID);
+  ConfigID = int(xeeConfigID);
+  if (ConfigID < 0 || ConfigID >99){
+     ConfigID = 0;
   }
-  lastConfigIDJoined = ConfigIDJoined;
+  lastConfigID = ConfigID;
 }
 
 void updateConfigID() {
-  if (ConfigIDJoined != lastConfigIDJoined) {
-    Serial.println(ConfigIDJoined);
-    saveConfigIDInt1(ConfigIDJoined);
-    lastConfigIDJoined = ConfigIDJoined;
+  if (ConfigID != lastConfigID) {
+    Serial.println(ConfigID);
+    saveConfigID(ConfigID);
+    lastConfigID = ConfigID;
   }
 }
 
@@ -80,7 +70,6 @@ MENU(showSensorData,"Sensor Data",
    OP("Water Temp: 73 F",nothing),
    OP("Room Temp: 78 F",nothing),
    OP("Room Humidity: 32 %",nothing),
-   OP("Water Level: High",nothing),
    OP("Status: Idle",nothing)
 );
 
@@ -91,7 +80,7 @@ MENU(actionMenu,"Action",
 
 MENU(mainMenu,"Main",
   SUBMENU(showSensorData),
-  FIELD(ConfigIDJoined,"Unit ID","",0,100,10,1,updateConfigID),
+  FIELD(ConfigID,"Unit ID","",0,100,10,1,updateConfigID),
   SUBMENU(actionMenu),
   OP("Setup",nothing)
 );
