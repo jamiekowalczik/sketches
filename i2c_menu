@@ -5,8 +5,14 @@
 #include "nRF24L01.h"
 #include "RF24.h"
 #include "printf.h"
+#include <stdio.h>
 
-#include <HardwareSerial.h>
+#include "Thread.h"
+
+#include <OneWire.h>
+#include <DallasTemperature.h>
+
+//#include <HardwareSerial.h>
 #include <Wire.h> 
 #include <LiquidCrystal_I2C.h>
 #include <menu.h>//menu macros and objects
@@ -14,7 +20,7 @@
 //#include <quadEncoder.h>
 #include <genericKeyboard.h>
 //#include <keyStream.h>
-#include <chainStream.h>
+//#include <chainStream.h>
 #include <menuLCDs.h>//F. Malpartida LCD's
 #include <menuFields.h>
 
@@ -32,8 +38,8 @@ int addrConfigID = 1;
 #define keyboard_AnalogInput 3
 
 #define btnRIGHT  menu::enterCode
-#define btnUP     menu::upCode
-#define btnDOWN   menu::downCode
+#define btnUP     menu::downCode
+#define btnDOWN   menu::upCode
 #define btnLEFT   menu::escCode
 #define btnENTER  menu::enterCode
 #define btnNONE   -1
@@ -42,6 +48,17 @@ LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE);  // Set the LCD I
 menuLCD menu_lcd(lcd,20,4);//menu output device
 
 void nothing() {}
+
+#define ONE_WIRE_BUS 4
+
+/*-----( Declare objects )-----*/
+/* Set up a oneWire instance to communicate with any OneWire device*/
+OneWire ourWire(ONE_WIRE_BUS);
+
+/* Tell Dallas Temperature Library to use oneWire Library */
+DallasTemperature sensors(&ourWire);
+
+Thread myThread = Thread();
 
 void saveConfigID(int i) {
   xeeConfigID = byte(i);
@@ -59,7 +76,6 @@ void readConfig() {
 
 void updateConfigID() {
   if (ConfigID != lastConfigID) {
-    Serial.println(ConfigID);
     saveConfigID(ConfigID);
     lastConfigID = ConfigID;
   }
@@ -105,9 +121,42 @@ void fillCmd() {
   lcd.print(" ****Completed****  ");
 }
 
+String str1="Room Temp: ";
+String str2="74 F";
+String concatStr=str1+str2;
+
+//prompt sub1(str1,nothing);
+//prompt* subMenuData[]={&sub1};
+//menu subMenu("Sub-menu",1,subMenuData);
+
+
+void showSensorInfo() {
+  menu_lcd.clear();
+  menu_lcd.setCursor(0,0);
+  menu_lcd.print("Room Temp: ");
+  menu_lcd.print(" F");
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("Filling Reservoir");
+  delay(1000);
+  lcd.setCursor(0,1);
+  lcd.print(".");
+  delay(1000);
+  lcd.print(".");
+  delay(1000);
+  lcd.print(".");
+  delay(1000);
+  lcd.print(".");
+  delay(1000);
+  lcd.print(".");
+  delay(1000);
+  lcd.setCursor(0,2);
+  lcd.print(" ****Completed****  ");
+}
+
 MENU(showSensorData,"Sensor Data",
    OP("Water Level: High",nothing),
-   OP("Water Temp: 73 F",nothing),
+   OP("Water Temp: ",nothing),
    OP("Room Temp: 78 F",nothing),
    OP("Room Humidity: 32 %",nothing),
    OP("Status: Idle",nothing)
@@ -118,12 +167,22 @@ MENU(actionMenu,"Action",
    OP("Empty",emptyCmd)
 );
 
+MENU(setupMenu,"Setup",
+   FIELD(ConfigID,"Unit ID","",0,99,-10,-1,updateConfigID),
+   OP("Set Date/Time",nothing)
+);
+
 MENU(mainMenu,"Main",
   SUBMENU(showSensorData),
-  FIELD(ConfigID,"Unit ID","",0,100,10,1,updateConfigID),
   SUBMENU(actionMenu),
-  OP("Setup",nothing)
+  SUBMENU(setupMenu)
 );
+
+//FIELD(ConfigID,"Unit ID","",0,99,-10,-1,updateConfigID),
+
+int updateWaterTempAlarm() {
+  return 1;
+}
 
 RF24 radio(9,10);
 // Radio pipe addresses for the 2 nodes to communicate.
@@ -153,7 +212,8 @@ int read_keyboard() {
       if (button == button2) {
          old_button = button;
          pressed_button = button;
-         if(button != 0) { 
+         if(button != 0) {
+           //Serial.println(button); 
            if(button == 1) return btnLEFT;
            if(button == 2) return btnUP;
            if(button == 3) return btnDOWN;
@@ -170,7 +230,7 @@ int read_keyboard1() {
   int button, button2, pressed_button;  
   button = getButton();
   if(button != 0) { 
-    Serial.println(button);
+    //Serial.println(button);
     if(button == 1) return btnLEFT;
     if(button == 2) return btnUP;
     if(button == 3) return btnDOWN;
@@ -202,8 +262,8 @@ int getButton() {
 
 genericKeyboard mykb(read_keyboard);
  
-Stream* in2[]={&mykb,&Serial};
-chainStream<2> allIn(in2);
+//Stream* in2[]={&mykb,&Serial};
+//chainStream<2> allIn(in2);
 
 void performAction(unsigned char rawMessage){
    unsigned short action, piid, deviceid, callback;
@@ -245,14 +305,40 @@ void loopRadio() {
    } 
 }
 
-void setup()
-{
+int intWaterTemp, intOldWaterTemp;
+void readTemperature() {
+  sensors.requestTemperatures();
+  intWaterTemp = sensors.getTempFByIndex(0);
+  //Serial.println(intWaterTemp);
+  if(intOldWaterTemp != intWaterTemp && intWaterTemp != 185 && intWaterTemp != -196) {
+    String strWaterTempPre = "Water Temp: ";
+    String strWaterTemp = String(intWaterTemp);
+    String strJoinedString = strWaterTempPre+strWaterTemp+" F";
+    //Serial.println(strJoinedString);
+    //Serial.println("----");
+    int str_len = strJoinedString.length() + 1;
+    char charWaterTemp[str_len];
+    strJoinedString.toCharArray(charWaterTemp, str_len);
+    //Serial.println(charWaterTemp);
+    showSensorData.data[1]->text = charWaterTemp;
+    intOldWaterTemp = intWaterTemp;
+    showSensorData.redraw(menu_lcd,mykb);
+  }
+}
+
+void setup() {
+  //delay(1000);
   Serial.begin(9600);
   readConfig();
    
   Wire.begin();
   lcd.begin(20,4);
   lcd.print("Ok"); 
+
+  sensors.begin();
+
+  myThread.onRun(readTemperature);
+  myThread.setInterval(1000);
   
   //pinMode(pinEnter,INPUT);//make it an input
   //digitalWrite(pinEnter,HIGH);//activate pull-up on pin 4
@@ -270,6 +356,14 @@ void setup()
 void loop()
 {
   //serial can use numbers or +/- and Enter=* Esc=/ to navigate (nav keys can be redefined)
-  mainMenu.poll(menu_lcd,allIn);
+  mainMenu.poll(menu_lcd,mykb);
   //loopRadio();
+  //readTemperature();
+  if(myThread.shouldRun())
+    myThread.run();
+  //if ((menu*)menuNode::activeMenu==showSensorData) {
+    //readTemperature();
+  //}
+  
+  //delay(10);
 }
