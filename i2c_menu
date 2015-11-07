@@ -23,6 +23,7 @@
 //#include <chainStream.h>
 #include <menuLCDs.h>//F. Malpartida LCD's
 #include <menuFields.h>
+#include "RTClib.h"
 
 //Variables containing data we want to keep persistent
 int lastConfigID;
@@ -44,12 +45,17 @@ int addrConfigID = 1;
 #define btnENTER  menu::enterCode
 #define btnNONE   -1
 
+#define depthHighPin A2
+#define depthHighID 2
+
 LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE);  // Set the LCD I2C address
 menuLCD menu_lcd(lcd,20,4);//menu output device
 
 void nothing() {}
 
 #define ONE_WIRE_BUS 4
+
+RTC_DS1307 rtc;    // Create a RealTimeClock object
 
 /*-----( Declare objects )-----*/
 /* Set up a oneWire instance to communicate with any OneWire device*/
@@ -58,7 +64,8 @@ OneWire ourWire(ONE_WIRE_BUS);
 /* Tell Dallas Temperature Library to use oneWire Library */
 DallasTemperature sensors(&ourWire);
 
-Thread myThread = Thread();
+Thread t_checkWaterTemp = Thread();
+Thread t_checkWaterDepth = Thread();
 
 void saveConfigID(int i) {
   xeeConfigID = byte(i);
@@ -155,7 +162,7 @@ void showSensorInfo() {
 }
 
 MENU(showSensorData,"Sensor Data",
-   OP("Water Level: High",nothing),
+   OP("Water Level: ",nothing),
    OP("Water Temp: ",nothing),
    OP("Room Temp: 78 F",nothing),
    OP("Room Humidity: 32 %",nothing),
@@ -319,9 +326,35 @@ void readTemperature() {
     int str_len = strJoinedString.length() + 1;
     char charWaterTemp[str_len];
     strJoinedString.toCharArray(charWaterTemp, str_len);
-    //Serial.println(charWaterTemp);
+    Serial.print(charWaterTemp);
+    displayTime();
     showSensorData.data[1]->text = charWaterTemp;
     intOldWaterTemp = intWaterTemp;
+    showSensorData.redraw(menu_lcd,mykb);
+  }
+}
+
+String curWaterDepthVal, lastWaterDepthVal;
+void readWaterDepth() {
+  int curVal = analogRead(depthHighID);
+  if(curVal > 500){
+    curWaterDepthVal = "High";
+  }else{
+    curWaterDepthVal = "Low"; 
+  }
+  if(lastWaterDepthVal != curWaterDepthVal) {
+    String strWaterLevelPre = "Water Level: ";
+    String strWaterLevel = String(curWaterDepthVal);
+    String strJoinedString = strWaterLevelPre+strWaterLevel;
+    //Serial.println(strJoinedString);
+    //Serial.println("----");
+    int str_len = strJoinedString.length() + 1;
+    char charWaterLevel[str_len];
+    strJoinedString.toCharArray(charWaterLevel, str_len);
+    Serial.print(charWaterLevel);
+    displayTime();
+    showSensorData.data[0]->text = charWaterLevel;
+    lastWaterDepthVal = curWaterDepthVal;
     showSensorData.redraw(menu_lcd,mykb);
   }
 }
@@ -337,8 +370,21 @@ void setup() {
 
   sensors.begin();
 
-  myThread.onRun(readTemperature);
-  myThread.setInterval(1000);
+  t_checkWaterTemp.onRun(readTemperature);
+  t_checkWaterTemp.setInterval(500);
+
+  t_checkWaterDepth.onRun(readWaterDepth);
+  t_checkWaterDepth.setInterval(500);
+
+  rtc.begin(); // Start the RTC library code
+
+  /*----( SET the date and time.  Comment OUT these lines after setting )----*/
+  // Put these "//" in front of the line you do NOT want to use
+  // following line sets the RTC to the date & time this sketch was compiled
+     rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+  // This line sets the RTC with an explicit date & time, for example to set
+  // May 21, 2015 at 6pm you would call: (use 24 hour time)
+  //    rtc.adjust(DateTime(2015, 5, 21, 18, 0, 0));
   
   //pinMode(pinEnter,INPUT);//make it an input
   //digitalWrite(pinEnter,HIGH);//activate pull-up on pin 4
@@ -353,17 +399,48 @@ void setup() {
   //radio.printDetails();
 }
 
+void displayTime() {
+  DateTime now = rtc.now();  // Read data from the RTC Chip
+
+  Serial.print(" at ");
+  Serial.print(now.year(), DEC); //
+  Serial.print('/');
+  Serial.print(now.month(), DEC);
+  Serial.print('/');
+  Serial.print(now.day(), DEC);
+  Serial.print(' ');
+  Serial.print(now.hour(), DEC);
+  Serial.print(':');
+  Serial.print(now.minute(), DEC);
+  Serial.print(':');
+  Serial.print(now.second(), DEC);
+  Serial.println();
+}
+
+String curMenu;
+String prevMenu;
+
 void loop()
 {
   //serial can use numbers or +/- and Enter=* Esc=/ to navigate (nav keys can be redefined)
   mainMenu.poll(menu_lcd,mykb);
   //loopRadio();
+  curMenu = ((menu*)menuNode::activeNode)->text;
+  if (curMenu == "Sensor Data") {
+    if(curMenu != prevMenu){
+      intOldWaterTemp = 0;
+    }
+    prevMenu = curMenu;
+    if(t_checkWaterTemp.shouldRun()){
+      t_checkWaterTemp.run();
+    }
+    if(t_checkWaterDepth.shouldRun()){
+      t_checkWaterDepth.run();
+    }
+  }else{
+    prevMenu = curMenu;
+  }
+
+  //readWaterDepth();
   //readTemperature();
-  if(myThread.shouldRun())
-    myThread.run();
-  //if ((menu*)menuNode::activeMenu==showSensorData) {
-    //readTemperature();
-  //}
-  
-  //delay(10);
 }
