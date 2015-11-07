@@ -6,24 +6,30 @@
 #include "RF24.h"
 #include "printf.h"
 #include <stdio.h>
-
 #include "Thread.h"
-
 #include <OneWire.h>
 #include <DallasTemperature.h>
-
-//#include <HardwareSerial.h>
 #include <Wire.h> 
 #include <LiquidCrystal_I2C.h>
-#include <menu.h>//menu macros and objects
-//#include <pcint.h>
-//#include <quadEncoder.h>
+#include <menu.h>
 #include <genericKeyboard.h>
-//#include <keyStream.h>
 //#include <chainStream.h>
-#include <menuLCDs.h>//F. Malpartida LCD's
+#include <menuLCDs.h>
 #include <menuFields.h>
 #include "RTClib.h"
+
+// Pin Definitions
+#define pinEnter A3
+#define keyboard_AnalogInput 3
+#define btnRIGHT  menu::enterCode
+#define btnUP     menu::downCode
+#define btnDOWN   menu::upCode
+#define btnLEFT   menu::escCode
+#define btnENTER  menu::enterCode
+#define btnNONE   -1
+#define depthHighPin A2
+#define depthHighID 2
+#define ONE_WIRE_BUS 4
 
 //Variables containing data we want to keep persistent
 int lastConfigID;
@@ -34,34 +40,13 @@ int ConfigID;
 byte xeeConfigID;
 int addrConfigID = 1;
 
-// Pin Definitions
-#define pinEnter A3
-#define keyboard_AnalogInput 3
-
-#define btnRIGHT  menu::enterCode
-#define btnUP     menu::downCode
-#define btnDOWN   menu::upCode
-#define btnLEFT   menu::escCode
-#define btnENTER  menu::enterCode
-#define btnNONE   -1
-
-#define depthHighPin A2
-#define depthHighID 2
-
 LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE);  // Set the LCD I2C address
 menuLCD menu_lcd(lcd,20,4);//menu output device
 
 void nothing() {}
 
-#define ONE_WIRE_BUS 4
-
 RTC_DS1307 rtc;    // Create a RealTimeClock object
-
-/*-----( Declare objects )-----*/
-/* Set up a oneWire instance to communicate with any OneWire device*/
 OneWire ourWire(ONE_WIRE_BUS);
-
-/* Tell Dallas Temperature Library to use oneWire Library */
 DallasTemperature sensors(&ourWire);
 
 Thread t_checkWaterTemp = Thread();
@@ -419,7 +404,6 @@ void displayTime() {
 
 String curMenu;
 String prevMenu;
-
 void loop()
 {
   //serial can use numbers or +/- and Enter=* Esc=/ to navigate (nav keys can be redefined)
@@ -429,6 +413,7 @@ void loop()
   if (curMenu == "Sensor Data") {
     if(curMenu != prevMenu){
       intOldWaterTemp = 0;
+      lastWaterDepthVal = "";
     }
     prevMenu = curMenu;
     if(t_checkWaterTemp.shouldRun()){
