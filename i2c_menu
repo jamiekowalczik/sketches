@@ -17,6 +17,7 @@
 #include <menuLCDs.h>
 #include <menuFields.h>
 #include "RTClib.h"
+#include "DHT.h"
 
 // Pin Definitions
 #define pinEnter A3
@@ -30,6 +31,8 @@
 #define depthHighPin A2
 #define depthHighID 2
 #define ONE_WIRE_BUS 4
+#define DHTPIN 3
+#define DHTTYPE DHT11
 
 //Variables containing data we want to keep persistent
 int lastConfigID;
@@ -48,9 +51,11 @@ void nothing() {}
 RTC_DS1307 rtc;    // Create a RealTimeClock object
 OneWire ourWire(ONE_WIRE_BUS);
 DallasTemperature sensors(&ourWire);
+DHT dht(DHTPIN, DHTTYPE);
 
 Thread t_checkWaterTemp = Thread();
 Thread t_checkWaterDepth = Thread();
+Thread t_checkAirTempHumidity = Thread();
 
 void saveConfigID(int i) {
   xeeConfigID = byte(i);
@@ -113,15 +118,6 @@ void fillCmd() {
   lcd.print(" ****Completed****  ");
 }
 
-String str1="Room Temp: ";
-String str2="74 F";
-String concatStr=str1+str2;
-
-//prompt sub1(str1,nothing);
-//prompt* subMenuData[]={&sub1};
-//menu subMenu("Sub-menu",1,subMenuData);
-
-
 void showSensorInfo() {
   menu_lcd.clear();
   menu_lcd.setCursor(0,0);
@@ -146,17 +142,19 @@ void showSensorInfo() {
   lcd.print(" ****Completed****  ");
 }
 
-MENU(showSensorData,"Sensor Data",
+////// MENU
+
+MENU(subMenuSensorData,"Sensor Data",
    OP("Water Level: ",nothing),
    OP("Water Temp: ",nothing),
-   OP("Room Temp: 78 F",nothing),
-   OP("Room Humidity: 32 %",nothing),
-   OP("Status: Idle",nothing)
+   OP("Room Temp: ",nothing),
+   OP("Humidity: ",nothing)
 );
 
 MENU(actionMenu,"Action",
    OP("Fill",fillCmd),
-   OP("Empty",emptyCmd)
+   OP("Empty",emptyCmd),
+   OP("Status: Idle",nothing)
 );
 
 MENU(setupMenu,"Setup",
@@ -165,12 +163,37 @@ MENU(setupMenu,"Setup",
 );
 
 MENU(mainMenu,"Main",
-  SUBMENU(showSensorData),
+  SUBMENU(subMenuSensorData),
   SUBMENU(actionMenu),
   SUBMENU(setupMenu)
 );
 
-//FIELD(ConfigID,"Unit ID","",0,99,-10,-1,updateConfigID),
+/////////////
+
+////// NO MACROS MENU
+/**
+prompt subSensorDataWaterLevel("Water Level: ",nothing);
+prompt subSensorDataWaterTemp("Water Temp: ",nothing);
+prompt subSensorDataRoomTemp("Room Temp: ",nothing);
+prompt subSensorRoomHumidity("Room Humidity: ",nothing);
+prompt* subMenuSensorDataItems[]={&subSensorDataWaterLevel,&subSensorDataWaterTemp,&subSensorDataRoomTemp,&subSensorRoomHumidity};
+menu subMenuSensorData("Sensor Data",5,subMenuSensorDataItems);
+
+prompt subActionFill("Fill",fillCmd);
+prompt subActionEmpty("Empty",emptyCmd);
+prompt subStatus("Status: Idle",nothing);
+prompt* subMenuActionItems[]={&subActionFill,&subActionEmpty,&subStatus};
+menu subMenuAction("Action",2,subMenuActionItems);
+
+prompt subSetupUnitID("Unit ID");
+prompt subSetupSetDateTime("Set Date/Time");
+prompt* subMenuSetupItems[]={&subSetupUnitID,&subSetupSetDateTime};
+menu subMenuSetup("Setup",2,subMenuSetupItems);
+
+prompt* mainMenuDataItems[]={&subMenuSensorData,&subMenuAction,&subMenuSetup};
+menu mainMenu("Main menu",3,mainMenuDataItems);
+**/
+/////////////////////
 
 int updateWaterTempAlarm() {
   return 1;
@@ -297,6 +320,7 @@ void loopRadio() {
    } 
 }
 
+char charWaterTemp[20];
 int intWaterTemp, intOldWaterTemp;
 void readTemperature() {
   sensors.requestTemperatures();
@@ -309,20 +333,21 @@ void readTemperature() {
     //Serial.println(strJoinedString);
     //Serial.println("----");
     int str_len = strJoinedString.length() + 1;
-    char charWaterTemp[str_len];
+    charWaterTemp[str_len];
     strJoinedString.toCharArray(charWaterTemp, str_len);
     Serial.print(charWaterTemp);
     displayTime();
-    showSensorData.data[1]->text = charWaterTemp;
+    subMenuSensorData.data[1]->text = charWaterTemp;
     intOldWaterTemp = intWaterTemp;
-    showSensorData.redraw(menu_lcd,mykb);
+    subMenuSensorData.redraw(menu_lcd,mykb);
   }
 }
 
 String curWaterDepthVal, lastWaterDepthVal;
+char charWaterLevel[20];
 void readWaterDepth() {
   int curVal = analogRead(depthHighID);
-  if(curVal > 500){
+  if(curVal > 625){
     curWaterDepthVal = "High";
   }else{
     curWaterDepthVal = "Low"; 
@@ -334,14 +359,113 @@ void readWaterDepth() {
     //Serial.println(strJoinedString);
     //Serial.println("----");
     int str_len = strJoinedString.length() + 1;
-    char charWaterLevel[str_len];
+    charWaterLevel[str_len];
     strJoinedString.toCharArray(charWaterLevel, str_len);
     Serial.print(charWaterLevel);
     displayTime();
-    showSensorData.data[0]->text = charWaterLevel;
+    subMenuSensorData.data[0]->text = charWaterLevel;
     lastWaterDepthVal = curWaterDepthVal;
-    showSensorData.redraw(menu_lcd,mykb);
+    subMenuSensorData.redraw(menu_lcd,mykb);
   }
+}
+
+char charRoomTemp[20];
+char charRoomHumidity[20];
+int intRoomTemp, intOldRoomTemp, intRoomHumidity, intOldRoomHumidity;
+float fRoomTemp, fRoomHumidity;
+void readRoomTemperatureAndHumidity() {
+  float fRoomHumidity = dht.readHumidity();
+  float fRoomTemp = dht.readTemperature(true);
+  intRoomTemp = (int) fRoomTemp;
+  intRoomHumidity = (int) fRoomHumidity;
+  
+  if (isnan(fRoomHumidity) || isnan(fRoomTemp)) {
+    Serial.println("Failed to read from DHT sensor!");
+    return;
+  }
+
+  if(intRoomTemp != intOldRoomTemp) {
+    String strRoomTempPre = "Room Temp: ";
+    String strRoomTemp = String(intRoomTemp);
+    String strJoinedString = strRoomTempPre+strRoomTemp+" F";
+    //Serial.println(strJoinedString);
+    //Serial.println("----");
+    int str_len = strJoinedString.length() + 1;
+    charRoomTemp[str_len];
+    strJoinedString.toCharArray(charRoomTemp, str_len);
+    Serial.print(charRoomTemp);
+    displayTime();
+    subMenuSensorData.data[2]->text = charRoomTemp;
+    intOldRoomTemp = intRoomTemp;
+    subMenuSensorData.redraw(menu_lcd,mykb);
+  }
+
+  if(intOldRoomHumidity != intRoomHumidity) {
+    String strRoomHumidityPre = "Humidity: ";
+    String strRoomHumidity = String(intRoomHumidity);
+    String strJoinedString = strRoomHumidityPre+strRoomHumidity+" %";
+    //Serial.println(strJoinedString);
+    //Serial.println("----");
+    int str_len = strJoinedString.length() + 1;
+    charRoomHumidity[str_len];
+    strJoinedString.toCharArray(charRoomHumidity, str_len);
+    Serial.print(charRoomHumidity);
+    displayTime();
+    subMenuSensorData.data[3]->text = charRoomHumidity;
+    intOldRoomHumidity = intRoomHumidity;
+    subMenuSensorData.redraw(menu_lcd,mykb);
+  }
+}
+
+void readAirTempHumidity() {
+  float h = dht.readHumidity();
+  // Read temperature as Celsius (the default)
+  float t = dht.readTemperature();
+  // Read temperature as Fahrenheit (isFahrenheit = true)
+  float f = dht.readTemperature(true);
+
+  // Check if any reads failed and exit early (to try again).
+  if (isnan(h) || isnan(t) || isnan(f)) {
+    Serial.println("Failed to read from DHT sensor!");
+    return;
+  }
+
+  // Compute heat index in Fahrenheit (the default)
+  float hif = dht.computeHeatIndex(f, h);
+  // Compute heat index in Celsius (isFahreheit = false)
+  float hic = dht.computeHeatIndex(t, h, false);
+
+  Serial.print("Humidity: ");
+  Serial.print(h);
+  Serial.print(" %\t");
+  Serial.print("Temperature: ");
+  Serial.print(t);
+  Serial.print(" *C ");
+  Serial.print(f);
+  Serial.print(" *F\t");
+  Serial.print("Heat index: ");
+  Serial.print(hic);
+  Serial.print(" *C ");
+  Serial.print(hif);
+  Serial.println(" *F");
+}
+
+void displayTime() {
+  DateTime now = rtc.now();  // Read data from the RTC Chip
+
+  Serial.print(" at ");
+  Serial.print(now.year(), DEC); //
+  Serial.print('/');
+  Serial.print(now.month(), DEC);
+  Serial.print('/');
+  Serial.print(now.day(), DEC);
+  Serial.print(' ');
+  Serial.print(now.hour(), DEC);
+  Serial.print(':');
+  Serial.print(now.minute(), DEC);
+  Serial.print(':');
+  Serial.print(now.second(), DEC);
+  Serial.println();
 }
 
 void setup() {
@@ -361,8 +485,12 @@ void setup() {
   t_checkWaterDepth.onRun(readWaterDepth);
   t_checkWaterDepth.setInterval(500);
 
+  t_checkAirTempHumidity.onRun(readRoomTemperatureAndHumidity);
+  t_checkAirTempHumidity.setInterval(500);
+  
   rtc.begin(); // Start the RTC library code
-
+  dht.begin();
+  
   /*----( SET the date and time.  Comment OUT these lines after setting )----*/
   // Put these "//" in front of the line you do NOT want to use
   // following line sets the RTC to the date & time this sketch was compiled
@@ -384,24 +512,6 @@ void setup() {
   //radio.printDetails();
 }
 
-void displayTime() {
-  DateTime now = rtc.now();  // Read data from the RTC Chip
-
-  Serial.print(" at ");
-  Serial.print(now.year(), DEC); //
-  Serial.print('/');
-  Serial.print(now.month(), DEC);
-  Serial.print('/');
-  Serial.print(now.day(), DEC);
-  Serial.print(' ');
-  Serial.print(now.hour(), DEC);
-  Serial.print(':');
-  Serial.print(now.minute(), DEC);
-  Serial.print(':');
-  Serial.print(now.second(), DEC);
-  Serial.println();
-}
-
 String curMenu;
 String prevMenu;
 void loop()
@@ -414,13 +524,19 @@ void loop()
     if(curMenu != prevMenu){
       intOldWaterTemp = 0;
       lastWaterDepthVal = "";
+      intOldRoomTemp = 0;
+      intOldRoomHumidity = 0;
     }
+   
     prevMenu = curMenu;
     if(t_checkWaterTemp.shouldRun()){
       t_checkWaterTemp.run();
     }
     if(t_checkWaterDepth.shouldRun()){
       t_checkWaterDepth.run();
+    }
+    if(t_checkAirTempHumidity.shouldRun()){
+      t_checkAirTempHumidity.run();
     }
   }else{
     prevMenu = curMenu;
