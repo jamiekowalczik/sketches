@@ -335,8 +335,22 @@ void readTemperature() {
     int str_len = strJoinedString.length() + 1;
     charWaterTemp[str_len];
     strJoinedString.toCharArray(charWaterTemp, str_len);
-    Serial.print(charWaterTemp);
-    displayTime();
+    //Serial.print(charWaterTemp);
+    //displayTime();
+    subMenuSensorData.data[1]->text = charWaterTemp;
+    intOldWaterTemp = intWaterTemp;
+    subMenuSensorData.redraw(menu_lcd,mykb);
+  }else if(intOldWaterTemp != intWaterTemp && (intWaterTemp == 185 || intWaterTemp == -196)){
+    String strWaterTempPre = "Water Temp: ";
+    String strWaterTemp = "Error";
+    String strJoinedString = strWaterTempPre+strWaterTemp;
+    //Serial.println(strJoinedString);
+    //Serial.println("----");
+    int str_len = strJoinedString.length() + 1;
+    charWaterTemp[str_len];
+    strJoinedString.toCharArray(charWaterTemp, str_len);
+    //Serial.print(charWaterTemp);
+    //displayTime();
     subMenuSensorData.data[1]->text = charWaterTemp;
     intOldWaterTemp = intWaterTemp;
     subMenuSensorData.redraw(menu_lcd,mykb);
@@ -347,8 +361,12 @@ String curWaterDepthVal, lastWaterDepthVal;
 char charWaterLevel[20];
 void readWaterDepth() {
   int curVal = analogRead(depthHighID);
-  if(curVal > 625){
+  //Serial.print("Analog Sensor: ");
+  //Serial.println(curVal);
+  if(curVal > 625 && curVal < 750){
     curWaterDepthVal = "High";
+  }else if(curVal > 750){
+    curWaterDepthVal = "Error";
   }else{
     curWaterDepthVal = "Low"; 
   }
@@ -361,8 +379,8 @@ void readWaterDepth() {
     int str_len = strJoinedString.length() + 1;
     charWaterLevel[str_len];
     strJoinedString.toCharArray(charWaterLevel, str_len);
-    Serial.print(charWaterLevel);
-    displayTime();
+    //Serial.print(charWaterLevel);
+    //displayTime();
     subMenuSensorData.data[0]->text = charWaterLevel;
     lastWaterDepthVal = curWaterDepthVal;
     subMenuSensorData.redraw(menu_lcd,mykb);
@@ -380,7 +398,38 @@ void readRoomTemperatureAndHumidity() {
   intRoomHumidity = (int) fRoomHumidity;
   
   if (isnan(fRoomHumidity) || isnan(fRoomTemp)) {
-    Serial.println("Failed to read from DHT sensor!");
+    intRoomTemp = -1;
+    if(intRoomTemp != intOldRoomTemp) {
+      String strRoomTempPre = "Room Temp: ";
+      String strRoomTemp = "Error";
+      String strJoinedString = strRoomTempPre+strRoomTemp;
+      //Serial.println(strJoinedString);
+      //Serial.println("----");
+      int str_len = strJoinedString.length() + 1;
+      charRoomTemp[str_len];
+      strJoinedString.toCharArray(charRoomTemp, str_len);
+      //Serial.print(charRoomTemp);
+      displayTime();
+      subMenuSensorData.data[2]->text = charRoomTemp;
+      intOldRoomTemp = intRoomTemp;
+      subMenuSensorData.redraw(menu_lcd,mykb);
+    }
+    intRoomHumidity = -1;
+    if(intOldRoomHumidity != intRoomHumidity) {
+      String strRoomHumidityPre = "Humidity: ";
+      String strRoomHumidity = "Error";
+      String strJoinedString = strRoomHumidityPre+strRoomHumidity;
+      //Serial.println(strJoinedString);
+      //Serial.println("----");
+      int str_len = strJoinedString.length() + 1;
+      charRoomHumidity[str_len];
+      strJoinedString.toCharArray(charRoomHumidity, str_len);
+      //Serial.print(charRoomHumidity);
+      displayTime();
+      subMenuSensorData.data[3]->text = charRoomHumidity;
+      intOldRoomHumidity = intRoomHumidity;
+      subMenuSensorData.redraw(menu_lcd,mykb);
+    }
     return;
   }
 
@@ -393,7 +442,7 @@ void readRoomTemperatureAndHumidity() {
     int str_len = strJoinedString.length() + 1;
     charRoomTemp[str_len];
     strJoinedString.toCharArray(charRoomTemp, str_len);
-    Serial.print(charRoomTemp);
+    //Serial.print(charRoomTemp);
     displayTime();
     subMenuSensorData.data[2]->text = charRoomTemp;
     intOldRoomTemp = intRoomTemp;
@@ -409,7 +458,7 @@ void readRoomTemperatureAndHumidity() {
     int str_len = strJoinedString.length() + 1;
     charRoomHumidity[str_len];
     strJoinedString.toCharArray(charRoomHumidity, str_len);
-    Serial.print(charRoomHumidity);
+    //Serial.print(charRoomHumidity);
     displayTime();
     subMenuSensorData.data[3]->text = charRoomHumidity;
     intOldRoomHumidity = intRoomHumidity;
