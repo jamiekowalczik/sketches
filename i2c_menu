@@ -12,9 +12,9 @@
 #include <LiquidCrystal_I2C.h>
 #include <menu.h>
 #include <genericKeyboard.h>
-//#include <chainStream.h>
 #include <menuLCDs.h>
 #include <menuFields.h>
+#include <Time.h>
 #include "RTClib.h"
 #include "DHT.h"
 
@@ -76,23 +76,23 @@ void updateConfigID() {
 void emptyCmd() {
   lcd.clear();
   lcd.setCursor(0,0);
-  lcd.print("Emptying Reservoir");
+  lcd.print(F("Emptying Reservoir"));
   delay(1000);
   lcd.setCursor(0,1);
-  lcd.print(".");
+  lcd.print(F("."));
   lcd.setCursor(0,2);
-  lcd.print(" ****Completed****  ");
+  lcd.print(F(" ****Completed****  "));
 }
 
 void fillCmd() {
   lcd.clear();
   lcd.setCursor(0,0);
-  lcd.print("Filling Reservoir");
+  lcd.print(F("Filling Reservoir"));
   delay(1000);
   lcd.setCursor(0,1);
-  lcd.print(".");
+  lcd.print(F("."));
   lcd.setCursor(0,2);
-  lcd.print(" ****Completed****  ");
+  lcd.print(F(" ****Completed****  "));
 }
 
 ////// MENU
@@ -113,12 +113,11 @@ MENU(actionMenu,"Action",
 byte bHour, bMinute, bDay, bMonth;
 int iYear;
 MENU(setDateTimeMenu,"Set Date/Time",
-   OP("Date/Time",nothing),
-   FIELD(bHour,"Hour","",0,23,-10,-1,nothing),
-   FIELD(bMinute,"Minute","",0,59,-10,-1,nothing),
-   FIELD(bDay,"Day","",1,31,-10,-1,nothing),
-   FIELD(bMonth,"Month","",1,12,-10,-1,nothing),
-   FIELD(iYear,"Year","",2015,3015,-10,-1,nothing)
+   FIELD(bHour,"Hour","",0,23,-10,-1,updateRTC),
+   FIELD(bMinute,"Minute","",0,59,-10,-1,updateRTC),
+   FIELD(bDay,"Day","",1,31,-10,-1,updateRTC),
+   FIELD(bMonth,"Month","",1,12,-10,-1,updateRTC),
+   FIELD(iYear,"Year","",2015,3015,-10,-1,updateRTC)
 );
 
 MENU(setupMenu,"Setup",
@@ -127,6 +126,7 @@ MENU(setupMenu,"Setup",
 );
   
 MENU(mainMenu,"Main",
+  OP("",nothing),
   SUBMENU(subMenuSensorData),
   SUBMENU(actionMenu),
   SUBMENU(setupMenu)
@@ -134,6 +134,12 @@ MENU(mainMenu,"Main",
 
 byte updateWaterTempAlarm() {
   return 1;
+}
+
+void updateRTC(){
+  setTime(bHour,bMinute,0,bDay,bMonth,iYear);
+  rtc.adjust(DateTime(now()));
+  showTime();
 }
 
 RF24 radio(9,10);
@@ -198,9 +204,6 @@ int getButton() {
 }
 
 genericKeyboard mykb(read_keyboard);
- 
-//Stream* in2[]={&mykb,&Serial};
-//chainStream<2> allIn(in2);
 
 void performAction(unsigned char rawMessage){
    unsigned short action, piid, deviceid, callback;
@@ -283,9 +286,9 @@ String curWaterDepthVal, lastWaterDepthVal;
 char charWaterLevel[20];
 void readWaterDepth() {
   int curVal = analogRead(depthHighID);
-  //Serial.print("Analog Sensor: ");
-  //Serial.println(curVal);
-  if(curVal > 625 && curVal < 750){
+  Serial.print(F("Analog Sensor: "));
+  Serial.println(curVal);
+  if(curVal > 475 && curVal < 750){
     curWaterDepthVal = "High";
   }else if(curVal > 750){
     curWaterDepthVal = "Error";
@@ -388,20 +391,20 @@ void readRoomTemperatureAndHumidity() {
   }
 }
 
-char cDateTime[20];
+char cDateTime[20], cHourString[20];
 byte bCurMonth, bOldMonth, bCurDay, bOldDay, bCurHour, bOldHour, bCurMinute, bOldMinute;
-int intCurYear, intOldYear;
+int iCurYear, iOldYear;
 void showTime() {
   //Serial.println("checking time");
   DateTime now = rtc.now();  // Read data from the RTC Chip
-  intCurYear = now.year();
+  iCurYear = now.year();
   bCurMonth = now.month();
   bCurDay = now.day();
   bCurHour = now.hour();
   bCurMinute = now.minute();
-  if(intCurYear != intOldYear || bCurMonth != bOldMonth || bCurDay != bOldDay || bCurHour != bOldHour || bCurMinute != bOldMinute){
+  if(iCurYear != iOldYear || bCurMonth != bOldMonth || bCurDay != bOldDay || bCurHour != bOldHour || bCurMinute != bOldMinute){
     //Serial.println("updating time");
-    intOldYear = intCurYear;
+    iOldYear = iCurYear;
     bOldMonth = bCurMonth;
     bOldDay = bCurDay;
     bOldHour = bCurHour;
@@ -421,14 +424,31 @@ void showTime() {
       sCurMinute = String(bCurMinute);
     }
     
-    String strTime = String(bCurHour)+":"+sCurMinute+AMPM+" "+bCurMonth+"/"+bCurDay+"/"+intCurYear;
+    String strTime = String(bCurHour)+":"+sCurMinute+AMPM+" "+bCurMonth+"/"+bCurDay+"/"+iCurYear;
     String strJoinedString = strTime;
     byte str_len = strJoinedString.length() + 1;
     cDateTime[str_len];
     strJoinedString.toCharArray(cDateTime, str_len);
     //Serial.print(charRoomHumidity);
-    setDateTimeMenu.data[0]->text = cDateTime;
-    setDateTimeMenu.redraw(menu_lcd,mykb);
+
+    /**
+    String strHourString = "Hour "+String(bCurHour);
+    str_len = strHourString.length() + 1;
+    cHourString[str_len];
+    strHourString.toCharArray(cHourString, str_len);
+    setDateTimeMenu.data[1]->text = cHourString;
+    **/
+
+    iYear = iCurYear;
+    bMonth = bCurMonth;
+    bDay = bCurDay;
+    bHour = bCurHour;
+    bMinute = bCurMinute;
+    
+    //setDateTimeMenu.data[0]->text = cDateTime;
+    //setDateTimeMenu.redraw(menu_lcd,mykb);
+    mainMenu.data[0]->text = cDateTime;
+    mainMenu.redraw(menu_lcd,mykb); 
   }
 }
 
@@ -460,29 +480,20 @@ void setup() {
   //radio.printDetails();
 }
 
-String curMenu;
-String prevMenu;
+String curMenu, prevMenu;
 void loop()
 {
   //serial can use numbers or +/- and Enter=* Esc=/ to navigate (nav keys can be redefined)
-  mainMenu.poll(menu_lcd,mykb);
+  
+  mainMenu.poll(menu_lcd,mykb,false);
   //loopRadio();
   curMenu = ((menu*)menuNode::activeNode)->text;
   if (curMenu == "Sensor Data") {
-    if(curMenu != prevMenu){
-      bOldWaterTemp = 0;
-      lastWaterDepthVal = "";
-      bOldRoomTemp = 0;
-      bOldRoomHumidity = 0;
-    }
     prevMenu = curMenu;
     readSensorTemperature();
     readWaterDepth();
     readRoomTemperatureAndHumidity();
-  }else if(curMenu == "Set Date/Time"){
-    if(curMenu != prevMenu){
-      intCurYear = -1;
-    }
+  }else if(curMenu == "Main"){
     prevMenu = curMenu;
     showTime();
   }else{
