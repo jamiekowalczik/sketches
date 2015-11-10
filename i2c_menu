@@ -18,6 +18,7 @@
 #include <Time.h>
 #include "RTClib.h"
 #include "DHT.h"
+//#include <FlexiTimer2.h>
 
 // Pin Definitions
 #define pinEnter A3
@@ -297,21 +298,22 @@ byte bWaterTemp, bOldWaterTemp;
 void readSensorTemperature() {
   sensors.requestTemperatures();
   bWaterTemp = sensors.getTempFByIndex(0);
+  String strWaterTempPre = "Water Temp: ";
+  String strWaterTemp, strJoinedString;
+  byte str_len;
   if(bOldWaterTemp != bWaterTemp && bWaterTemp != 185 && bWaterTemp != -196) {
-    String strWaterTempPre = "Water Temp: ";
-    String strWaterTemp = String(bWaterTemp);
-    String strJoinedString = strWaterTempPre+strWaterTemp+" F";
-    byte str_len = strJoinedString.length() + 1;
+    strWaterTemp = String(bWaterTemp);
+    strJoinedString = strWaterTempPre+strWaterTemp+" F";
+    str_len = strJoinedString.length() + 1;
     charWaterTemp[str_len];
     strJoinedString.toCharArray(charWaterTemp, str_len);
     subMenuSensorData.data[1]->text = charWaterTemp;
     bOldWaterTemp = bWaterTemp;
     subMenuSensorData.redraw(menu_lcd,mykb);
   }else if(bOldWaterTemp != bWaterTemp && (bWaterTemp == 185 || bWaterTemp == -196)){
-    String strWaterTempPre = "Water Temp: ";
-    String strWaterTemp = "Error";
-    String strJoinedString = strWaterTempPre+strWaterTemp;
-    byte str_len = strJoinedString.length() + 1;
+    strWaterTemp = "Error";
+    strJoinedString = strWaterTempPre+strWaterTemp;
+    str_len = strJoinedString.length() + 1;
     charWaterTemp[str_len];
     strJoinedString.toCharArray(charWaterTemp, str_len);
     subMenuSensorData.data[1]->text = charWaterTemp;
@@ -353,16 +355,21 @@ float fRoomTemp, fRoomHumidity;
 void readRoomTemperatureAndHumidity() {
   float fRoomHumidity = dht.readHumidity();
   float fRoomTemp = dht.readTemperature(true);
+  String strRoomTempPre = "Room Temp: ";
+  String strRoomHumidityPre = "Humidity: ";
+  String strRoomHumidity;
+  String strRoomTemp, strJoinedString;
+  byte str_len;
+  
   bRoomTemp = (int) fRoomTemp;
   bRoomHumidity = (int) fRoomHumidity;
-  
+
   if (isnan(fRoomHumidity) || isnan(fRoomTemp)) {
     bRoomTemp = 0;
     if(bRoomTemp != bOldRoomTemp) {
-      String strRoomTempPre = "Room Temp: ";
-      String strRoomTemp = "Error";
-      String strJoinedString = strRoomTempPre+strRoomTemp;
-      byte str_len = strJoinedString.length() + 1;
+      strRoomTemp = "Error";
+      strJoinedString = strRoomTempPre+strRoomTemp;
+      str_len = strJoinedString.length() + 1;
       charRoomTemp[str_len];
       strJoinedString.toCharArray(charRoomTemp, str_len);
       subMenuSensorData.data[2]->text = charRoomTemp;
@@ -371,10 +378,9 @@ void readRoomTemperatureAndHumidity() {
     }
     bRoomHumidity = 0;
     if(bOldRoomHumidity != bRoomHumidity) {
-      String strRoomHumidityPre = "Humidity: ";
-      String strRoomHumidity = "Error";
-      String strJoinedString = strRoomHumidityPre+strRoomHumidity;
-      byte str_len = strJoinedString.length() + 1;
+      strRoomHumidity = "Error";
+      strJoinedString = strRoomHumidityPre+strRoomHumidity;
+      str_len = strJoinedString.length() + 1;
       charRoomHumidity[str_len];
       strJoinedString.toCharArray(charRoomHumidity, str_len);
       subMenuSensorData.data[3]->text = charRoomHumidity;
@@ -385,10 +391,10 @@ void readRoomTemperatureAndHumidity() {
   }
 
   if(bRoomTemp != bOldRoomTemp) {
-    String strRoomTempPre = "Room Temp: ";
-    String strRoomTemp = String(bRoomTemp);
-    String strJoinedString = strRoomTempPre+strRoomTemp+" F";
-    byte str_len = strJoinedString.length() + 1;
+    strRoomTempPre = "Room Temp: ";
+    strRoomTemp = String(bRoomTemp);
+    strJoinedString = strRoomTempPre+strRoomTemp+" F";
+    str_len = strJoinedString.length() + 1;
     charRoomTemp[str_len];
     strJoinedString.toCharArray(charRoomTemp, str_len);
     subMenuSensorData.data[2]->text = charRoomTemp;
@@ -397,10 +403,10 @@ void readRoomTemperatureAndHumidity() {
   }
 
   if(bOldRoomHumidity != bRoomHumidity) {
-    String strRoomHumidityPre = "Humidity: ";
-    String strRoomHumidity = String(bRoomHumidity);
-    String strJoinedString = strRoomHumidityPre+strRoomHumidity+" %";
-    byte str_len = strJoinedString.length() + 1;
+    strRoomHumidityPre = "Humidity: ";
+    strRoomHumidity = String(bRoomHumidity);
+    strJoinedString = strRoomHumidityPre+strRoomHumidity+" %";
+    str_len = strJoinedString.length() + 1;
     charRoomHumidity[str_len];
     strJoinedString.toCharArray(charRoomHumidity, str_len);
     subMenuSensorData.data[3]->text = charRoomHumidity;
@@ -436,6 +442,8 @@ void showTime() {
     if(bCurHour > 12){
       bCurHour = bCurHour - 12;
       AMPM = " PM";
+    }else if(bCurHour == 0){
+      bCurHour = 12;
     }
 
     String sCurMinute;
@@ -471,7 +479,7 @@ void setup() {
   
   rtc.begin(); // Start the RTC library code
   dht.begin();
-
+  
   //pinMode(pinEnter,INPUT);//make it an input
   //digitalWrite(pinEnter,HIGH);//activate pull-up on pin 4
 
