@@ -19,7 +19,7 @@
 #include <Time.h>
 #include "RTClib.h"
 #include "DHT.h"
-//#include <FlexiTimer2.h>
+#include <Thread.h>
 
 // Pin Definitions
 #define pinEnter A3
@@ -54,6 +54,12 @@ RTC_DS1307 rtc;    // Create a RealTimeClock object
 OneWire ourWire(ONE_WIRE_BUS);
 DallasTemperature sensors(&ourWire);
 DHT dht(DHTPIN, DHTTYPE);
+
+Thread t_LCDUpdate = Thread();
+Thread t_WaterSensorTemp = Thread();
+Thread t_WaterSensorDepth = Thread();
+Thread t_AirSensorTempHumidity = Thread();
+Thread t_Timestamp = Thread();
 
 void saveConfigID(byte i) {
   xeeConfigID = byte(i);
@@ -588,6 +594,21 @@ void setup() {
   
   rtc.begin(); // Start the RTC library code
   dht.begin();
+
+  t_LCDUpdate.onRun(updateLCD);
+  t_LCDUpdate.setInterval(100);
+  
+  t_WaterSensorTemp.onRun(readSensorTemperature);
+  t_WaterSensorTemp.setInterval(1500);
+
+  t_WaterSensorDepth.onRun(readWaterDepth);
+  t_WaterSensorDepth.setInterval(1500);
+
+  t_AirSensorTempHumidity.onRun(readRoomTemperatureAndHumidity);
+  t_AirSensorTempHumidity.setInterval(1500);
+
+  t_Timestamp.onRun(showTime);
+  t_Timestamp.setInterval(500);
   
   //radio.begin();
   //  radio.setAutoAck(1); // Ensure autoACK is enabled
@@ -599,20 +620,34 @@ void setup() {
   //radio.printDetails();
 }
 
+void updateLCD(){
+  mainMenu.poll(menu_lcd,allIn,false);
+}
+
 String curMenu, prevMenu;
 void loop() {
-  mainMenu.poll(menu_lcd,allIn,false);
+  if(t_LCDUpdate.shouldRun())
+      t_LCDUpdate.run();
+  //mainMenu.poll(menu_lcd,allIn,false);
   //loopRadio();
   curMenu = ((menu*)menuNode::activeNode)->text;
   if (curMenu == "Sensor Data") {
-    delay(1000);
-    readSensorTemperature();
-    delay(1000);
-    readWaterDepth();
-    delay(1000);
-    readRoomTemperatureAndHumidity();
+    if(t_WaterSensorTemp.shouldRun())
+      t_WaterSensorTemp.run();
+    //delay(1000);
+    //readSensorTemperature();
+    if(t_WaterSensorDepth.shouldRun())
+      t_WaterSensorDepth.run();
+    //delay(1000);
+    //readWaterDepth();
+    if(t_AirSensorTempHumidity.shouldRun())
+      t_AirSensorTempHumidity.run();
+    //delay(1000);
+    //readRoomTemperatureAndHumidity();
   }else if(curMenu == "Main"){
-    delay(500);
-    showTime();
+    if(t_Timestamp.shouldRun())
+      t_Timestamp.run();
+    //delay(500);
+    //showTime();
   }
 }
