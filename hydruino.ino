@@ -147,7 +147,6 @@ void emptyCmd() {
       lcd.print(F("."));
       dots++;
     }else{
-      lcd.print(F("."));
       dots = 0;
       lcd.setCursor(0,2);
       lcd.print("                    ");
@@ -202,7 +201,6 @@ void fillCmd() {
       lcd.print(F("."));
       dots++;
     }else{
-      lcd.print(F("."));
       dots = 0;
       lcd.setCursor(0,2);
       lcd.print("                    ");
@@ -596,16 +594,16 @@ void setup() {
   dht.begin();
 
   t_LCDUpdate.onRun(updateLCD);
-  t_LCDUpdate.setInterval(100);
+  t_LCDUpdate.setInterval(50);
   
   t_WaterSensorTemp.onRun(readSensorTemperature);
-  t_WaterSensorTemp.setInterval(1500);
+  t_WaterSensorTemp.setInterval(3000);
 
   t_WaterSensorDepth.onRun(readWaterDepth);
   t_WaterSensorDepth.setInterval(1500);
 
   t_AirSensorTempHumidity.onRun(readRoomTemperatureAndHumidity);
-  t_AirSensorTempHumidity.setInterval(1500);
+  t_AirSensorTempHumidity.setInterval(3000);
 
   t_Timestamp.onRun(showTime);
   t_Timestamp.setInterval(500);
