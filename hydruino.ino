@@ -87,8 +87,8 @@ Thread t_Timestamp = Thread();
 ////// MENU
 
 TOGGLE(xeeDHTType,dhtTypes,"DHT Types: ",
-    VALUE("DHT11",0, updateDHTType),
-    VALUE("DHT22",1, updateDHTType)
+    VALUE("DHT11",0, toggleDHTType),
+    VALUE("DHT22",1, toggleDHTType)
 );
 
 TOGGLE(relay1Val,relay1Menu,"Relay 1: ",
@@ -101,19 +101,13 @@ TOGGLE(relay2Val,relay2Menu,"Relay 2: ",
     VALUE("Off",0, toggleRelay2)
 );
 
-/*Examples
-String adc_prescale;
+byte bRetVal;
 //field value, click to browse, click to choose
-CHOOSE(adc_prescale,sample_clock,"Sample clock",
-    VALUE("/128","",nothing),
-    VALUE("/64","",nothing),
-    VALUE("/32","",nothing),
-    VALUE("/16","",nothing),
-    VALUE("/8","",nothing),
-    VALUE("/4","",nothing),
-    VALUE("/2","",nothing)
+CHOOSE(bRetVal,some_sample,"Choice: ",
+    VALUE("A",0,nothing),
+    VALUE("B",1,nothing),
+    VALUE("C",2,nothing)
 );
-**/
 
 MENU(subMenuSensorData,"Sensor Data",
    OP("Water Level: ",nothing),
@@ -126,7 +120,8 @@ MENU(actionMenu,"Action",
    OP("Fill",fillCmd),
    OP("Empty",emptyCmd),
    SUBMENU(relay1Menu),
-   SUBMENU(relay2Menu)
+   SUBMENU(relay2Menu),
+   SUBMENU(some_sample)
 );
 
 byte bHour, bMinute, bDay, bMonth;
@@ -235,7 +230,7 @@ void updateConfigID() {
   }
 }
 
-void updateDHTType() {
+void toggleDHTType() {
   if (xeeDHTType != xeeLastDHTType) {
     saveDHTType(xeeDHTType);
     xeeLastDHTType = xeeDHTType;
@@ -739,7 +734,7 @@ void setup() {
 }
 
 void updateLCD(){
-  mainMenu.poll(menu_lcd,allIn,false);
+  mainMenu.poll(menu_lcd,allIn);
 }
 
 String curMenu, prevMenu;
