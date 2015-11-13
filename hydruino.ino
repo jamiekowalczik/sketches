@@ -1,6 +1,5 @@
 //Import this phenominal library
 //#include <EnableInterrupt.h>
-#include <EEPROM.h>
 #include <SPI.h>
 #include "nRF24L01.h"
 #include "RF24.h"
@@ -18,8 +17,9 @@
 #include <controls/common/menuTextFields.h>
 #include <Time.h>
 #include "RTClib.h"
-#include "DHT.h"
+#include "dht.h"
 #include <Thread.h>
+#include <EEPROMex.h>
 
 // Pin Definitions
 #define pinEnter A3
@@ -34,16 +34,39 @@
 #define depthHighID 2
 #define ONE_WIRE_BUS 4
 #define DHTPIN 3
-#define DHTTYPE DHT11
+
+byte DHTTYPE = 0;
 
 //Variables containing data we want to keep persistent
 byte lastConfigID;
 byte ConfigID;
 
-//Variables for reading/writing persistent data
-//Vars for reading & writing settings
+char charWaterTemp[20];
+byte bWaterTemp, bOldWaterTemp;
+
 byte xeeConfigID;
-byte addrConfigID = 1;
+byte addrConfigID = 10;
+byte xeeRelay1;
+byte addrRelay1 = 20;
+int relay1 = 5;
+int relay1Val = 0;
+int relay1OldVal = 0;
+int relay2 = 2;
+int relay2Val = 0;
+int relay2OldVal = 0;
+byte xeeRelay2;
+byte addrRelay2 = 30;
+byte xeeDHTType = 0, xeeLastDHTType = 0;
+byte addrDHTType = 20;
+char charRoomTemp[20];
+char charRoomHumidity[20];
+byte bRoomTemp, bOldRoomTemp, bRoomHumidity, bOldRoomHumidity;
+float fRoomTemp, fRoomHumidity;
+
+genericKeyboard mykb(read_keyboard);
+//alternative to previous but now we can input from Serial too...
+Stream* in2[]={&mykb,&Serial};
+chainStream<2> allIn(in2);
 
 LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE);  // Set the LCD I2C address
 menuLCD menu_lcd(lcd,20,4);//menu output device
@@ -53,23 +76,111 @@ void nothing() {}
 RTC_DS1307 rtc;    // Create a RealTimeClock object
 OneWire ourWire(ONE_WIRE_BUS);
 DallasTemperature sensors(&ourWire);
-DHT dht(DHTPIN, DHTTYPE);
 
 Thread t_LCDUpdate = Thread();
+Thread t_readRF24 = Thread();
 Thread t_WaterSensorTemp = Thread();
 Thread t_WaterSensorDepth = Thread();
 Thread t_AirSensorTempHumidity = Thread();
 Thread t_Timestamp = Thread();
 
-void saveConfigID(byte i) {
-  xeeConfigID = byte(i);
-  EEPROM.write(addrConfigID,xeeConfigID);
+////// MENU
+
+TOGGLE(xeeDHTType,dhtTypes,"DHT Types: ",
+    VALUE("DHT11",0, updateDHTType),
+    VALUE("DHT22",1, updateDHTType)
+);
+
+TOGGLE(relay1Val,relay1Menu,"Relay 1: ",
+    VALUE("On",1, toggleRelay1),
+    VALUE("Off",0, toggleRelay1)
+);
+
+TOGGLE(relay2Val,relay2Menu,"Relay 2: ",
+    VALUE("On",1, toggleRelay2),
+    VALUE("Off",0, toggleRelay2)
+);
+
+/*Examples
+String adc_prescale;
+//field value, click to browse, click to choose
+CHOOSE(adc_prescale,sample_clock,"Sample clock",
+    VALUE("/128","",nothing),
+    VALUE("/64","",nothing),
+    VALUE("/32","",nothing),
+    VALUE("/16","",nothing),
+    VALUE("/8","",nothing),
+    VALUE("/4","",nothing),
+    VALUE("/2","",nothing)
+);
+**/
+
+MENU(subMenuSensorData,"Sensor Data",
+   OP("Water Level: ",nothing),
+   OP("Water Temp: ",nothing),
+   OP("Room Temp: ",nothing),
+   OP("Humidity: ",nothing)
+);
+
+MENU(actionMenu,"Action",
+   OP("Fill",fillCmd),
+   OP("Empty",emptyCmd),
+   SUBMENU(relay1Menu),
+   SUBMENU(relay2Menu)
+);
+
+byte bHour, bMinute, bDay, bMonth;
+int iYear;
+MENU(setDateTimeMenu,"Set Date/Time",
+   FIELD(bHour,"Hour","",0,23,-10,-1,updateRTC),
+   FIELD(bMinute,"Minute","",0,59,-10,-1,updateRTC),
+   FIELD(bMonth,"Month","",1,12,-10,-1,updateRTC),
+   FIELD(bDay,"Day","",1,31,-10,-1,updateRTC),
+   FIELD(iYear,"Year","",2015,3015,-10,-1,updateRTC)
+);
+
+MENU(setupMenu,"Setup",
+   FIELD(ConfigID,"Unit ID","",0,99,-10,-1,updateConfigID),
+   SUBMENU(setDateTimeMenu),
+   SUBMENU(dhtTypes)
+);
+  
+MENU(mainMenu,"Main",
+  OP("",nothing),
+  SUBMENU(subMenuSensorData),
+  SUBMENU(actionMenu),
+  SUBMENU(setupMenu)
+);
+
+void toggleRelay1(){
+  Serial.println(relay1Val);
+  if(relay1Val == 0){
+    relay1OldVal = 0;
+    saveConfigRelay1(0);
+    digitalWrite(relay1, LOW);
+  }else{
+    relay1OldVal = 1;
+    saveConfigRelay1(1);
+    digitalWrite(relay1, HIGH);
+  }
 }
 
-byte xeeRelay1, xeeRelay2;
-byte addrRelay1 = 2, addrRelay2 = 3;
-int relay1 = 5, relay2 = 2;
-int relay1Val = 0, relay2Val = 0;
+void toggleRelay2(){
+  if(relay2Val == 0){
+    relay2OldVal = 0;
+    saveConfigRelay2(0);
+    digitalWrite(relay2, LOW);
+  }else{
+    relay2OldVal = 1;
+    saveConfigRelay2(1);
+    digitalWrite(relay2, HIGH);
+  }
+}
+
+void saveConfigID(byte i) {
+  xeeConfigID = byte(i);
+  EEPROM.write(addrConfigID, xeeConfigID);
+}
 
 void saveConfigRelay1(byte i) {
   xeeRelay1 = byte(i);
@@ -81,6 +192,13 @@ void saveConfigRelay2(byte i) {
   EEPROM.write(addrRelay2,xeeRelay2);
 }
 
+void saveDHTType(byte i){
+  xeeDHTType = byte(i);
+  EEPROM.write(addrDHTType, xeeDHTType);
+}
+
+
+dht DHT;
 void readConfig() {
   xeeConfigID = EEPROM.read(addrConfigID);
   ConfigID = byte(xeeConfigID);
@@ -104,6 +222,10 @@ void readConfig() {
   }else if(relay2Val == 1) {
      digitalWrite(relay2, HIGH);
   }
+
+  if(xeeDHTType == 0){
+    xeeLastDHTType = 0;
+  }
 }
 
 void updateConfigID() {
@@ -113,11 +235,18 @@ void updateConfigID() {
   }
 }
 
+void updateDHTType() {
+  if (xeeDHTType != xeeLastDHTType) {
+    saveDHTType(xeeDHTType);
+    xeeLastDHTType = xeeDHTType;
+  }
+}
+
 int ISHIGH = 0;
 
 void emptyCmd() {
-  delay(1000);
   lcd.clear();
+  delay(1000);
   readWaterDepth();
   if(ISHIGH == 0){
     lcd.clear();
@@ -127,6 +256,7 @@ void emptyCmd() {
     lcd.clear();
     lcd.setCursor(0,0);
     lcd.print(F("Emptying Reservoir  "));
+    relay1Val = 1;
     saveConfigRelay1(1);
     digitalWrite(relay1, HIGH);
   }
@@ -158,10 +288,13 @@ void emptyCmd() {
   lcd.clear();
   lcd.setCursor(0,3);
   lcd.print(F(" ****Completed****  "));
-  
+
+  relay1Val = 0;
   saveConfigRelay1(0);
   digitalWrite(relay1, LOW);
-  delay(2500);
+  delay(2000);
+  mainMenu.focus(1);
+  mainMenu.redraw(menu_lcd,allIn); 
 }
 
 void UpdateEmptyStatus(byte iStatus){
@@ -171,8 +304,8 @@ void UpdateEmptyStatus(byte iStatus){
 }
 
 void fillCmd() {
-  delay(1000);
   lcd.clear();
+  delay(1000);
   readWaterDepth();
   if(ISHIGH == 1){
     lcd.clear();
@@ -182,6 +315,7 @@ void fillCmd() {
     lcd.clear();
     lcd.setCursor(0,0);
     lcd.print(F("Filling Reservoir   "));
+    relay2Val = 1;
     saveConfigRelay2(1);
     digitalWrite(relay2, HIGH);
   }
@@ -212,10 +346,13 @@ void fillCmd() {
   lcd.clear();
   lcd.setCursor(0,3);
   lcd.print(F(" ****Completed****  "));
-  
+
+  relay2Val = 0;
   saveConfigRelay2(0);
   digitalWrite(relay2, LOW);
-  delay(2500);
+  delay(2000);
+  mainMenu.focus(1);
+  mainMenu.redraw(menu_lcd,allIn); 
 }
 
 void UpdateFillStatus(byte iStatus){
@@ -223,65 +360,6 @@ void UpdateFillStatus(byte iStatus){
   lcd.setCursor(0,1);
   lcd.print(FillStatus[iStatus]);
 }
-
-////// MENU
-
-/*Examples
-String targetVar;
-TOGGLE(targetVar,trigModes,"Mode: ",
-    VALUE("None","None"),
-    VALUE("On rise","On rise"),
-    VALUE("On fall","On fall"),
-    VALUE("Both","Both")
-);
-
-String adc_prescale;
-//field value, click to browse, click to choose
-CHOOSE(adc_prescale,sample_clock,"Sample clock",
-    VALUE("/128","",nothing),
-    VALUE("/64","",nothing),
-    VALUE("/32","",nothing),
-    VALUE("/16","",nothing),
-    VALUE("/8","",nothing),
-    VALUE("/4","",nothing),
-    VALUE("/2","",nothing)
-);
-**/
-
-MENU(subMenuSensorData,"Sensor Data",
-   OP("Water Level: ",nothing),
-   OP("Water Temp: ",nothing),
-   OP("Room Temp: ",nothing),
-   OP("Humidity: ",nothing)
-);
-
-MENU(actionMenu,"Action",
-   OP("Fill",fillCmd),
-   OP("Empty",emptyCmd),
-   OP("Status: Idle",nothing)
-);
-
-byte bHour, bMinute, bDay, bMonth;
-int iYear;
-MENU(setDateTimeMenu,"Set Date/Time",
-   FIELD(bHour,"Hour","",0,23,-10,-1,updateRTC),
-   FIELD(bMinute,"Minute","",0,59,-10,-1,updateRTC),
-   FIELD(bMonth,"Month","",1,12,-10,-1,updateRTC),
-   FIELD(bDay,"Day","",1,31,-10,-1,updateRTC),
-   FIELD(iYear,"Year","",2015,3015,-10,-1,updateRTC)
-);
-
-MENU(setupMenu,"Setup",
-   FIELD(ConfigID,"Unit ID","",0,99,-10,-1,updateConfigID),
-   SUBMENU(setDateTimeMenu)
-);
-  
-MENU(mainMenu,"Main",
-  OP("",nothing),
-  SUBMENU(subMenuSensorData),
-  SUBMENU(actionMenu),
-  SUBMENU(setupMenu)
-);
 
 byte updateWaterTempAlarm() {
   return 1;
@@ -293,7 +371,7 @@ void updateRTC(){
   showTime();
 }
 
-RF24 radio(9,10);
+RF24 radio(40,53);
 // Radio pipe addresses for the 2 nodes to communicate.
 const uint64_t pipes[2] = { 0xF0F0F0F0E1LL, 0xF0F0F0F0D2LL };
 
@@ -301,6 +379,8 @@ void sendCallback(unsigned short callback){
    // First, stop listening so we can talk
    radio.stopListening();
 
+   Serial.println(callback);
+   
    // Send the final one back.
    radio.write( &callback, sizeof(unsigned short) );
    printf("Sent response.\n\r");
@@ -354,27 +434,69 @@ int getButton() {
   return button;
 }
 
-genericKeyboard mykb(read_keyboard);
-//alternative to previous but now we can input from Serial too...
-Stream* in2[]={&mykb,&Serial};
-chainStream<2> allIn(in2);
-
-void performAction(unsigned char rawMessage){
+void performAction(unsigned short rawMessage){
    unsigned short action, piid, deviceid, callback;
-   
+   Serial.println(rawMessage);
    //int input_number = int(rawMessage);
    //action = (input_number%10);
    //deviceid = ((input_number/10)%10);
    //piid = ((input_number/100)%10);
-
-   //if (action == 0 || action ==1){
-   //   callback = action;
-   //   doAction(piid, deviceid, action);
-   //}else if(action == 2){
-   //   callback = getState(piid, deviceid);
-   //}
-   callback=0;
-   sendCallback(callback);
+   
+   if(rawMessage == 100){
+    callback=100;
+    sendCallback(callback);
+    fillCmd();
+   }else if(rawMessage == 101){
+    callback=101;
+    sendCallback(callback);
+    emptyCmd();
+   }else if(rawMessage == 83){
+     saveConfigRelay1(1);
+     digitalWrite(relay1, HIGH);
+     sendCallback(0);
+   }else if(rawMessage == 84){
+     saveConfigRelay2(1);
+     digitalWrite(relay2, HIGH);
+     sendCallback(0);
+   }else if(rawMessage == 85){
+     saveConfigRelay1(0);
+     digitalWrite(relay1, LOW);
+     sendCallback(0);
+   }else if(rawMessage == 86){
+     saveConfigRelay2(0);
+     digitalWrite(relay2, LOW);
+     sendCallback(0);
+   }else if(rawMessage == 87){
+    // WATER TEMP //
+    radio.stopListening();
+    readSensorTemperature();
+    readRoomTemperatureAndHumidity();
+    callback=(short)bWaterTemp;
+    sendCallback(callback);
+   }else if(rawMessage == 88){
+    // ROOM TEMP //
+    radio.stopListening();
+    readRoomTemperatureAndHumidity();
+    callback=(short)bRoomTemp;
+    sendCallback(callback);
+   }else if(rawMessage == 89){
+    // ROOM HUMIDITY //
+    radio.stopListening();
+    readRoomTemperatureAndHumidity();
+    callback=(short)bRoomHumidity;
+    sendCallback(callback);
+   }else if(rawMessage == 90){
+    // WATER LEVEL //
+    radio.stopListening();
+    readWaterDepth();
+    callback=(short)ISHIGH;
+    sendCallback(callback);
+   }else{
+     callback=0;
+     sendCallback(callback);
+   }
+   //callback=(short)bWaterTemp;
+   //sendCallback(callback);
 }
 
 void loopRadio() {
@@ -384,23 +506,19 @@ void loopRadio() {
       unsigned short message;
       bool done;
       // char * new;
-      //unsigned short rawMessage; 
-      unsigned char rawMessage;
+      unsigned short rawMessage; 
       done = false;
       while ( radio.available() ){
         // Fetch the payload, and see if this was the last one.
         radio.read( &rawMessage, sizeof(unsigned long) );
         // Spew it
-        printf("Got message %d...",rawMessage); 
-        Serial.println(rawMessage);
+        Serial.println("Message"+(String)rawMessage); 
         performAction(rawMessage);
         delay(10);
       }
-   } 
+   }
 }
 
-char charWaterTemp[20];
-byte bWaterTemp, bOldWaterTemp;
 void readSensorTemperature() {
   sensors.requestTemperatures();
   bWaterTemp = sensors.getTempFByIndex(0);
@@ -433,7 +551,7 @@ void readWaterDepth() {
   int curVal = analogRead(depthHighID);
   //Serial.print(F("Analog Sensor: "));
   //Serial.println(curVal);
-  if(curVal > 475 && curVal < 750){
+  if(curVal > 425 && curVal < 750){
     curWaterDepthVal = "High";
     ISHIGH = 1;
   }else if(curVal > 750){
@@ -456,13 +574,17 @@ void readWaterDepth() {
   }
 }
 
-char charRoomTemp[20];
-char charRoomHumidity[20];
-byte bRoomTemp, bOldRoomTemp, bRoomHumidity, bOldRoomHumidity;
-float fRoomTemp, fRoomHumidity;
+double Fahrenheit(double celsius){
+  return 1.8 * celsius + 32;
+}
+
 void readRoomTemperatureAndHumidity() {
-  float fRoomHumidity = dht.readHumidity();
-  float fRoomTemp = dht.readTemperature(true);
+  //float fRoomHumidity = dht.readHumidity();
+  DHT.read11(3);
+  float fRoomHumidity = DHT.humidity;
+  //float fRoomTemp = dht.readTemperature(true);
+  float cRoomTemp = DHT.temperature;
+  float fRoomTemp = Fahrenheit(cRoomTemp);
   String strRoomTempPre = "Room Temp: ";
   String strRoomHumidityPre = "Humidity: ";
   String strRoomHumidity;
@@ -591,10 +713,12 @@ void setup() {
   sensors.begin();
   
   rtc.begin(); // Start the RTC library code
-  dht.begin();
 
   t_LCDUpdate.onRun(updateLCD);
   t_LCDUpdate.setInterval(50);
+
+  t_readRF24.onRun(loopRadio);
+  t_readRF24.setInterval(50);
   
   t_WaterSensorTemp.onRun(readSensorTemperature);
   t_WaterSensorTemp.setInterval(3000);
@@ -608,14 +732,14 @@ void setup() {
   t_Timestamp.onRun(showTime);
   t_Timestamp.setInterval(500);
   
-  //radio.begin();
-  //  radio.setAutoAck(1); // Ensure autoACK is enabled
-  //radio.setRetries(15,15);
+  radio.begin();
+  radio.setAutoAck(1); // Ensure autoACK is enabled
+  radio.setRetries(15,15);
 
-  //radio.openWritingPipe(pipes[1]);
-  //radio.openReadingPipe(1,pipes[0]);
-  //radio.startListening();
-  //radio.printDetails();
+  radio.openWritingPipe(pipes[1]);
+  radio.openReadingPipe(1,pipes[0]);
+  radio.startListening();
+  radio.printDetails();
 }
 
 void updateLCD(){
@@ -626,26 +750,18 @@ String curMenu, prevMenu;
 void loop() {
   if(t_LCDUpdate.shouldRun())
       t_LCDUpdate.run();
-  //mainMenu.poll(menu_lcd,allIn,false);
-  //loopRadio();
+  if(t_readRF24.shouldRun())
+      t_readRF24.run();
   curMenu = ((menu*)menuNode::activeNode)->text;
   if (curMenu == "Sensor Data") {
     if(t_WaterSensorTemp.shouldRun())
       t_WaterSensorTemp.run();
-    //delay(1000);
-    //readSensorTemperature();
     if(t_WaterSensorDepth.shouldRun())
       t_WaterSensorDepth.run();
-    //delay(1000);
-    //readWaterDepth();
     if(t_AirSensorTempHumidity.shouldRun())
       t_AirSensorTempHumidity.run();
-    //delay(1000);
-    //readRoomTemperatureAndHumidity();
   }else if(curMenu == "Main"){
     if(t_Timestamp.shouldRun())
       t_Timestamp.run();
-    //delay(500);
-    //showTime();
   }
 }
