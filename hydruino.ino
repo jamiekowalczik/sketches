@@ -30,8 +30,12 @@
 #define btnLEFT   menu::escCode
 #define btnENTER  menu::enterCode
 #define btnNONE   -1
-#define depthHighPin A2
-#define depthHighID 2
+#define depthAnalog1Pin A2
+#define depthAnalog1PinID 2
+#define depthAnalog2Pin A1
+#define depthAnalog2PinID 1
+#define depthAnalog3Pin A0
+#define depthAnalog3PinID 0
 #define ONE_WIRE_BUS 4
 #define DHTPIN 3
 
@@ -48,14 +52,27 @@ byte xeeConfigID;
 byte addrConfigID = 10;
 byte xeeRelay1;
 byte addrRelay1 = 20;
-int relay1 = 5;
+byte pinRelay1 = 5;
 int relay1Val = 0;
 int relay1OldVal = 0;
-int relay2 = 2;
+byte pinRelay2 = 2;
 int relay2Val = 0;
 int relay2OldVal = 0;
 byte xeeRelay2;
 byte addrRelay2 = 30;
+
+byte xeeRelay3;
+byte addrRelay3 = 40;
+byte pinRelay3 = 6;
+int relay3Val = 0;
+int relay3OldVal = 0;
+
+byte xeeRelay4;
+byte addrRelay4 = 50;
+byte pinRelay4 = 7;
+int relay4Val = 0;
+int relay4OldVal = 0;
+
 byte xeeDHTType = 0, xeeLastDHTType = 0;
 byte addrDHTType = 20;
 char charRoomTemp[20];
@@ -80,7 +97,9 @@ DallasTemperature sensors(&ourWire);
 Thread t_LCDUpdate = Thread();
 Thread t_readRF24 = Thread();
 Thread t_WaterSensorTemp = Thread();
-Thread t_WaterSensorDepth = Thread();
+Thread t_WaterSensor1Depth = Thread();
+Thread t_WaterSensor2Depth = Thread();
+Thread t_WaterSensor3Depth = Thread();
 Thread t_AirSensorTempHumidity = Thread();
 Thread t_Timestamp = Thread();
 
@@ -101,6 +120,16 @@ TOGGLE(relay2Val,relay2Menu,"Relay 2: ",
     VALUE("Off",0, toggleRelay2)
 );
 
+TOGGLE(relay3Val,relay3Menu,"Relay 3: ",
+    VALUE("On",1, toggleRelay3),
+    VALUE("Off",0, toggleRelay3)
+);
+
+TOGGLE(relay4Val,relay4Menu,"Relay 4: ",
+    VALUE("On",1, toggleRelay4),
+    VALUE("Off",0, toggleRelay4)
+);
+
 byte bRetVal;
 //field value, click to browse, click to choose
 CHOOSE(bRetVal,some_sample,"Choice: ",
@@ -110,7 +139,9 @@ CHOOSE(bRetVal,some_sample,"Choice: ",
 );
 
 MENU(subMenuSensorData,"Sensor Data",
-   OP("Water Level: ",nothing),
+   OP("Water Level 1: ",nothing),
+   OP("Water Level 2: ",nothing),
+   OP("Water Level 3: ",nothing),
    OP("Water Temp: ",nothing),
    OP("Room Temp: ",nothing),
    OP("Humidity: ",nothing)
@@ -121,6 +152,8 @@ MENU(actionMenu,"Action",
    OP("Empty",emptyCmd),
    SUBMENU(relay1Menu),
    SUBMENU(relay2Menu),
+   SUBMENU(relay3Menu),
+   SUBMENU(relay4Menu),
    SUBMENU(some_sample)
 );
 
@@ -152,11 +185,11 @@ void toggleRelay1(){
   if(relay1Val == 0){
     relay1OldVal = 0;
     saveConfigRelay1(0);
-    digitalWrite(relay1, LOW);
+    digitalWrite(pinRelay1, LOW);
   }else{
     relay1OldVal = 1;
     saveConfigRelay1(1);
-    digitalWrite(relay1, HIGH);
+    digitalWrite(pinRelay1, HIGH);
   }
 }
 
@@ -164,11 +197,35 @@ void toggleRelay2(){
   if(relay2Val == 0){
     relay2OldVal = 0;
     saveConfigRelay2(0);
-    digitalWrite(relay2, LOW);
+    digitalWrite(pinRelay2, LOW);
   }else{
     relay2OldVal = 1;
     saveConfigRelay2(1);
-    digitalWrite(relay2, HIGH);
+    digitalWrite(pinRelay2, HIGH);
+  }
+}
+
+void toggleRelay3(){
+  if(relay3Val == 0){
+    relay3OldVal = 0;
+    saveConfigRelay3(0);
+    digitalWrite(pinRelay3, LOW);
+  }else{
+    relay3OldVal = 1;
+    saveConfigRelay3(1);
+    digitalWrite(pinRelay3, HIGH);
+  }
+}
+
+void toggleRelay4(){
+  if(relay4Val == 0){
+    relay4OldVal = 0;
+    saveConfigRelay4(0);
+    digitalWrite(pinRelay4, LOW);
+  }else{
+    relay4OldVal = 1;
+    saveConfigRelay4(1);
+    digitalWrite(pinRelay4, HIGH);
   }
 }
 
@@ -185,6 +242,16 @@ void saveConfigRelay1(byte i) {
 void saveConfigRelay2(byte i) {
   xeeRelay2 = byte(i);
   EEPROM.write(addrRelay2,xeeRelay2);
+}
+
+void saveConfigRelay3(byte i) {
+  xeeRelay3 = byte(i);
+  EEPROM.write(addrRelay3,xeeRelay3);
+}
+
+void saveConfigRelay4(byte i) {
+  xeeRelay2 = byte(i);
+  EEPROM.write(addrRelay4,xeeRelay4);
 }
 
 void saveDHTType(byte i){
@@ -205,17 +272,33 @@ void readConfig() {
   xeeRelay1 = EEPROM.read(addrRelay1);
   relay1Val = byte(xeeRelay1);
   if (relay1Val == 0) {
-     digitalWrite(relay1, LOW);
+     digitalWrite(pinRelay1, LOW);
   }else if(relay1Val == 1) {
-     digitalWrite(relay1, HIGH);
+     digitalWrite(pinRelay1, HIGH);
   }
 
   xeeRelay2 = EEPROM.read(addrRelay2);
   relay2Val = byte(xeeRelay2);
   if (relay2Val == 0) {
-     digitalWrite(relay2, LOW);
+     digitalWrite(pinRelay2, LOW);
   }else if(relay2Val == 1) {
-     digitalWrite(relay2, HIGH);
+     digitalWrite(pinRelay2, HIGH);
+  }
+
+  xeeRelay3 = EEPROM.read(addrRelay3);
+  relay3Val = byte(xeeRelay3);
+  if (relay3Val == 0) {
+     digitalWrite(pinRelay3, LOW);
+  }else if(relay3Val == 1) {
+     digitalWrite(pinRelay3, HIGH);
+  }
+
+  xeeRelay4 = EEPROM.read(addrRelay4);
+  relay4Val = byte(xeeRelay4);
+  if (relay4Val == 0) {
+     digitalWrite(pinRelay4, LOW);
+  }else if(relay4Val == 1) {
+     digitalWrite(pinRelay4, HIGH);
   }
 
   if(xeeDHTType == 0){
@@ -237,13 +320,15 @@ void toggleDHTType() {
   }
 }
 
-int ISHIGH = 0;
+int ISHIGH1 = 0;
+int ISHIGH2 = 0;
+int ISHIGH3 = 0;
 
 void emptyCmd() {
   lcd.clear();
   delay(1000);
-  readWaterDepth();
-  if(ISHIGH == 0){
+  readWaterSensor1();
+  if(ISHIGH1 < 1){
     lcd.clear();
     lcd.setCursor(0,0);
     lcd.print(F("Reservoir Is Empty  "));
@@ -253,7 +338,7 @@ void emptyCmd() {
     lcd.print(F("Emptying Reservoir  "));
     relay1Val = 1;
     saveConfigRelay1(1);
-    digitalWrite(relay1, HIGH);
+    digitalWrite(pinRelay1, HIGH);
   }
     
   int curStatus = 0;
@@ -277,8 +362,8 @@ void emptyCmd() {
       lcd.print("                    ");
     }
     delay(1000);
-    readWaterDepth();
-  } while (ISHIGH == 1);
+    readWaterSensor1();
+  } while (ISHIGH1 > 0);
 
   lcd.clear();
   lcd.setCursor(0,3);
@@ -286,7 +371,7 @@ void emptyCmd() {
 
   relay1Val = 0;
   saveConfigRelay1(0);
-  digitalWrite(relay1, LOW);
+  digitalWrite(pinRelay1, LOW);
   delay(2000);
   mainMenu.focus(1);
   mainMenu.redraw(menu_lcd,allIn); 
@@ -301,8 +386,8 @@ void UpdateEmptyStatus(byte iStatus){
 void fillCmd() {
   lcd.clear();
   delay(1000);
-  readWaterDepth();
-  if(ISHIGH == 1){
+  readWaterSensor1();
+  if(ISHIGH1 > 0){
     lcd.clear();
     lcd.setCursor(0,0);
     lcd.print(F("Reservoir Is Full   "));
@@ -312,7 +397,7 @@ void fillCmd() {
     lcd.print(F("Filling Reservoir   "));
     relay2Val = 1;
     saveConfigRelay2(1);
-    digitalWrite(relay2, HIGH);
+    digitalWrite(pinRelay2, HIGH);
   }
     
   byte curStatus = 0, dots = 0;
@@ -335,8 +420,8 @@ void fillCmd() {
       lcd.print("                    ");
     }
     delay(1000);
-    readWaterDepth();
-  } while (ISHIGH == 0);
+    readWaterSensor1();
+  } while (ISHIGH1 < 1);
 
   lcd.clear();
   lcd.setCursor(0,3);
@@ -344,7 +429,7 @@ void fillCmd() {
 
   relay2Val = 0;
   saveConfigRelay2(0);
-  digitalWrite(relay2, LOW);
+  digitalWrite(pinRelay2, LOW);
   delay(2000);
   mainMenu.focus(1);
   mainMenu.redraw(menu_lcd,allIn); 
@@ -447,44 +532,72 @@ void performAction(unsigned short rawMessage){
     emptyCmd();
    }else if(rawMessage == 83){
      saveConfigRelay1(1);
-     digitalWrite(relay1, HIGH);
+     digitalWrite(pinRelay1, HIGH);
      sendCallback(0);
    }else if(rawMessage == 84){
      saveConfigRelay2(1);
-     digitalWrite(relay2, HIGH);
+     digitalWrite(pinRelay2, HIGH);
      sendCallback(0);
    }else if(rawMessage == 85){
-     saveConfigRelay1(0);
-     digitalWrite(relay1, LOW);
+     saveConfigRelay2(1);
+     digitalWrite(pinRelay3, HIGH);
      sendCallback(0);
    }else if(rawMessage == 86){
-     saveConfigRelay2(0);
-     digitalWrite(relay2, LOW);
+     saveConfigRelay2(1);
+     digitalWrite(pinRelay4, HIGH);
      sendCallback(0);
    }else if(rawMessage == 87){
+     saveConfigRelay1(0);
+     digitalWrite(pinRelay1, LOW);
+     sendCallback(0);
+   }else if(rawMessage == 88){
+     saveConfigRelay2(0);
+     digitalWrite(pinRelay2, LOW);
+     sendCallback(0);
+   }else if(rawMessage == 89){
+     saveConfigRelay2(0);
+     digitalWrite(pinRelay3, LOW);
+     sendCallback(0);
+   }else if(rawMessage == 90){
+     saveConfigRelay2(0);
+     digitalWrite(pinRelay4, LOW);
+     sendCallback(0);
+   }else if(rawMessage == 91){
     // WATER TEMP //
     radio.stopListening();
     readSensorTemperature();
     readRoomTemperatureAndHumidity();
     callback=(short)bWaterTemp;
     sendCallback(callback);
-   }else if(rawMessage == 88){
+   }else if(rawMessage == 92){
     // ROOM TEMP //
     radio.stopListening();
     readRoomTemperatureAndHumidity();
     callback=(short)bRoomTemp;
     sendCallback(callback);
-   }else if(rawMessage == 89){
+   }else if(rawMessage == 93){
     // ROOM HUMIDITY //
     radio.stopListening();
     readRoomTemperatureAndHumidity();
     callback=(short)bRoomHumidity;
     sendCallback(callback);
-   }else if(rawMessage == 90){
-    // WATER LEVEL //
+   }else if(rawMessage == 94){
+    // WATER LEVEL 1//
     radio.stopListening();
-    readWaterDepth();
-    callback=(short)ISHIGH;
+    readWaterSensor1();
+    callback=(short)ISHIGH1;
+    sendCallback(callback);
+   }else if(rawMessage == 95){
+    // WATER LEVEL 2//
+    radio.stopListening();
+    readWaterSensor2();
+    callback=(short)ISHIGH2;
+    sendCallback(callback);
+   }else if(rawMessage == 96){
+    // WATER LEVEL 3//
+    radio.stopListening();
+    readWaterSensor3();
+    callback=(short)ISHIGH3;
     sendCallback(callback);
    }else{
      callback=999;
@@ -515,6 +628,8 @@ void loopRadio() {
 void readSensorTemperature() {
   sensors.requestTemperatures();
   bWaterTemp = sensors.getTempFByIndex(0);
+  Serial.print("Water Temp Sensor: ");
+  Serial.println(bWaterTemp);
   String strWaterTempPre = "Water Temp: ", strWaterTemp, strJoinedString;
   byte str_len;
   if(bOldWaterTemp != bWaterTemp && bWaterTemp != 185 && bWaterTemp != -196) {
@@ -523,7 +638,7 @@ void readSensorTemperature() {
     str_len = strJoinedString.length() + 1;
     charWaterTemp[str_len];
     strJoinedString.toCharArray(charWaterTemp, str_len);
-    subMenuSensorData.data[1]->text = charWaterTemp;
+    subMenuSensorData.data[3]->text = charWaterTemp;
     bOldWaterTemp = bWaterTemp;
     subMenuSensorData.redraw(menu_lcd,allIn);
   }else if(bOldWaterTemp != bWaterTemp && (bWaterTemp == 185 || bWaterTemp == -196)){
@@ -532,35 +647,95 @@ void readSensorTemperature() {
     str_len = strJoinedString.length() + 1;
     charWaterTemp[str_len];
     strJoinedString.toCharArray(charWaterTemp, str_len);
-    subMenuSensorData.data[1]->text = charWaterTemp;
+    subMenuSensorData.data[3]->text = charWaterTemp;
     bOldWaterTemp = bWaterTemp;
     subMenuSensorData.redraw(menu_lcd,allIn);
   }
 }
 
-String curWaterDepthVal, lastWaterDepthVal;
-char charWaterLevel[20];
-void readWaterDepth() {
-  int curVal = analogRead(depthHighID);
+String curWaterSensor1DepthVal, lastWaterSensor1DepthVal;
+char charWaterSensor1Level[20];
+void readWaterSensor1() {
+  int curVal = analogRead(depthAnalog1PinID);
+  Serial.print("Water Level Sensor 1: ");
+  Serial.println(curVal);
   if(curVal > 425 && curVal < 750){
-    curWaterDepthVal = "High";
-    ISHIGH = 1;
+    curWaterSensor1DepthVal = "High";
+    ISHIGH1 = 1;
   }else if(curVal > 750){
-    curWaterDepthVal = "Error";
-    ISHIGH = 1;
+    curWaterSensor1DepthVal = "Err";
+    ISHIGH1 = 2;
   }else{
-    curWaterDepthVal = "Low"; 
-    ISHIGH = 0;
+    curWaterSensor1DepthVal = "Low"; 
+    ISHIGH1 = 0;
   }
-  if(lastWaterDepthVal != curWaterDepthVal) {
-    String strWaterLevelPre = "Water Level: ";
-    String strWaterLevel = String(curWaterDepthVal);
+  if(lastWaterSensor1DepthVal != curWaterSensor1DepthVal) {
+    String strWaterLevelPre = "Water Level 1: ";
+    String strWaterLevel = String(curWaterSensor1DepthVal);
     String strJoinedString = strWaterLevelPre+strWaterLevel;
     byte str_len = strJoinedString.length() + 1;
-    charWaterLevel[str_len];
-    strJoinedString.toCharArray(charWaterLevel, str_len);
-    subMenuSensorData.data[0]->text = charWaterLevel;
-    lastWaterDepthVal = curWaterDepthVal;
+    charWaterSensor1Level[str_len];
+    strJoinedString.toCharArray(charWaterSensor1Level, str_len);
+    subMenuSensorData.data[0]->text = charWaterSensor1Level;
+    lastWaterSensor1DepthVal = curWaterSensor1DepthVal;
+    subMenuSensorData.redraw(menu_lcd,allIn);
+  }
+}
+
+String curWaterSensor2DepthVal, lastWaterSensor2DepthVal;
+char charWaterSensor2Level[20];
+void readWaterSensor2() {
+  int curVal = analogRead(depthAnalog2PinID);
+  Serial.print("Water Level Sensor 2: ");
+  Serial.println(curVal);
+  if(curVal > 425 && curVal < 750){
+    curWaterSensor2DepthVal = "High";
+    ISHIGH2= 1;
+  }else if(curVal > 750){
+    curWaterSensor2DepthVal = "Err";
+    ISHIGH2 = 2;
+  }else{
+    curWaterSensor2DepthVal = "Low"; 
+    ISHIGH2 = 0;
+  }
+  if(lastWaterSensor2DepthVal != curWaterSensor2DepthVal) {
+    String strWaterLevelPre = "Water Level 2: ";
+    String strWaterLevel = String(curWaterSensor2DepthVal);
+    String strJoinedString = strWaterLevelPre+strWaterLevel;
+    byte str_len = strJoinedString.length() + 1;
+    charWaterSensor2Level[str_len];
+    strJoinedString.toCharArray(charWaterSensor2Level, str_len);
+    subMenuSensorData.data[1]->text = charWaterSensor2Level;
+    lastWaterSensor2DepthVal = curWaterSensor2DepthVal;
+    subMenuSensorData.redraw(menu_lcd,allIn);
+  }
+}
+
+String curWaterSensor3DepthVal, lastWaterSensor3DepthVal;
+char charWaterSensor3Level[20];
+void readWaterSensor3() {
+  int curVal = analogRead(depthAnalog3PinID);
+  Serial.print("Water Level Sensor 3: ");
+  Serial.println(curVal);
+  if(curVal > 425 && curVal < 750){
+    curWaterSensor3DepthVal = "High";
+    ISHIGH3 = 1;
+  }else if(curVal > 750){
+    curWaterSensor3DepthVal = "Err";
+    ISHIGH3 = 2;
+  }else{
+    curWaterSensor3DepthVal = "Low"; 
+    ISHIGH3 = 0;
+  }
+  if(lastWaterSensor3DepthVal != curWaterSensor3DepthVal) {
+    String strWaterLevelPre = "Water Level 3: ";
+    String strWaterLevel = String(curWaterSensor3DepthVal);
+    String strJoinedString = strWaterLevelPre+strWaterLevel;
+    byte str_len = strJoinedString.length() + 1;
+    charWaterSensor3Level[str_len];
+    strJoinedString.toCharArray(charWaterSensor3Level, str_len);
+    subMenuSensorData.data[2]->text = charWaterSensor3Level;
+    lastWaterSensor3DepthVal = curWaterSensor3DepthVal;
     subMenuSensorData.redraw(menu_lcd,allIn);
   }
 }
@@ -585,6 +760,11 @@ void readRoomTemperatureAndHumidity() {
   bRoomTemp = (int) fRoomTemp;
   bRoomHumidity = (int) fRoomHumidity;
 
+  Serial.print("Air Temp: ");
+  Serial.println(bRoomTemp);
+  Serial.print("Humidity: ");
+  Serial.println(bRoomHumidity);
+
   if (isnan(fRoomHumidity) || isnan(fRoomTemp)) {
     bRoomTemp = 0;
     if(bRoomTemp != bOldRoomTemp) {
@@ -593,7 +773,7 @@ void readRoomTemperatureAndHumidity() {
       str_len = strJoinedString.length() + 1;
       charRoomTemp[str_len];
       strJoinedString.toCharArray(charRoomTemp, str_len);
-      subMenuSensorData.data[2]->text = charRoomTemp;
+      subMenuSensorData.data[4]->text = charRoomTemp;
       bOldRoomTemp = bRoomTemp;
       subMenuSensorData.redraw(menu_lcd,allIn);
     }
@@ -604,7 +784,7 @@ void readRoomTemperatureAndHumidity() {
       str_len = strJoinedString.length() + 1;
       charRoomHumidity[str_len];
       strJoinedString.toCharArray(charRoomHumidity, str_len);
-      subMenuSensorData.data[3]->text = charRoomHumidity;
+      subMenuSensorData.data[5]->text = charRoomHumidity;
       bOldRoomHumidity = bRoomHumidity;
       subMenuSensorData.redraw(menu_lcd,allIn);
     }
@@ -618,7 +798,7 @@ void readRoomTemperatureAndHumidity() {
     str_len = strJoinedString.length() + 1;
     charRoomTemp[str_len];
     strJoinedString.toCharArray(charRoomTemp, str_len);
-    subMenuSensorData.data[2]->text = charRoomTemp;
+    subMenuSensorData.data[4]->text = charRoomTemp;
     bOldRoomTemp = bRoomTemp;
     subMenuSensorData.redraw(menu_lcd,allIn);
   }
@@ -630,7 +810,7 @@ void readRoomTemperatureAndHumidity() {
     str_len = strJoinedString.length() + 1;
     charRoomHumidity[str_len];
     strJoinedString.toCharArray(charRoomHumidity, str_len);
-    subMenuSensorData.data[3]->text = charRoomHumidity;
+    subMenuSensorData.data[5]->text = charRoomHumidity;
     bOldRoomHumidity = bRoomHumidity;
     subMenuSensorData.redraw(menu_lcd,allIn);
   }
@@ -678,6 +858,8 @@ void showTime() {
     }
     
     String strTime = String(bCurHour)+":"+sCurMinute+AMPM+" "+bCurMonth+"/"+bCurDay+"/"+iCurYear;
+    Serial.print("Current Time: ");
+    Serial.println(strTime);
     String strJoinedString = strTime;
     byte str_len = strJoinedString.length() + 1;
     cDateTime[str_len];
@@ -689,11 +871,12 @@ void showTime() {
 }
 
 void setup() {
-  //delay(1000);
   Serial.begin(9600);
     
-  pinMode(relay1, OUTPUT);
-  pinMode(relay2, OUTPUT);
+  pinMode(pinRelay1, OUTPUT);
+  pinMode(pinRelay2, OUTPUT);
+  pinMode(pinRelay3, OUTPUT);
+  pinMode(pinRelay4, OUTPUT);
   
   readConfig();
   
@@ -714,8 +897,14 @@ void setup() {
   t_WaterSensorTemp.onRun(readSensorTemperature);
   t_WaterSensorTemp.setInterval(3000);
 
-  t_WaterSensorDepth.onRun(readWaterDepth);
-  t_WaterSensorDepth.setInterval(1500);
+  t_WaterSensor1Depth.onRun(readWaterSensor1);
+  t_WaterSensor1Depth.setInterval(1500);
+
+  t_WaterSensor2Depth.onRun(readWaterSensor2);
+  t_WaterSensor2Depth.setInterval(1500);
+  
+  t_WaterSensor3Depth.onRun(readWaterSensor3);
+  t_WaterSensor3Depth.setInterval(1500);
 
   t_AirSensorTempHumidity.onRun(readRoomTemperatureAndHumidity);
   t_AirSensorTempHumidity.setInterval(3000);
@@ -737,22 +926,30 @@ void updateLCD(){
   mainMenu.poll(menu_lcd,allIn);
 }
 
-String curMenu, prevMenu;
+String sCurMenu, sPrevMenu;
 void loop() {
   if(t_LCDUpdate.shouldRun())
       t_LCDUpdate.run();
   if(t_readRF24.shouldRun())
       t_readRF24.run();
-  curMenu = ((menu*)menuNode::activeNode)->text;
-  if (curMenu == "Sensor Data") {
+  sCurMenu = ((menu*)menuNode::activeNode)->text;
+  if (sCurMenu == "Sensor Data") {
+    sPrevMenu = sCurMenu;
     if(t_WaterSensorTemp.shouldRun())
       t_WaterSensorTemp.run();
-    if(t_WaterSensorDepth.shouldRun())
-      t_WaterSensorDepth.run();
+    if(t_WaterSensor1Depth.shouldRun())
+      t_WaterSensor1Depth.run();
+    if(t_WaterSensor2Depth.shouldRun())
+      t_WaterSensor2Depth.run();
+    if(t_WaterSensor3Depth.shouldRun())
+      t_WaterSensor3Depth.run();
     if(t_AirSensorTempHumidity.shouldRun())
       t_AirSensorTempHumidity.run();
-  }else if(curMenu == "Main"){
+  }else if(sCurMenu == "Main"){
+    sPrevMenu = sCurMenu;
     if(t_Timestamp.shouldRun())
       t_Timestamp.run();
+  }else{
+    sPrevMenu = sCurMenu;
   }
 }
