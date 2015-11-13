@@ -492,11 +492,9 @@ void performAction(unsigned short rawMessage){
     callback=(short)ISHIGH;
     sendCallback(callback);
    }else{
-     callback=0;
+     callback=999;
      sendCallback(callback);
    }
-   //callback=(short)bWaterTemp;
-   //sendCallback(callback);
 }
 
 void loopRadio() {
@@ -549,8 +547,6 @@ String curWaterDepthVal, lastWaterDepthVal;
 char charWaterLevel[20];
 void readWaterDepth() {
   int curVal = analogRead(depthHighID);
-  //Serial.print(F("Analog Sensor: "));
-  //Serial.println(curVal);
   if(curVal > 425 && curVal < 750){
     curWaterDepthVal = "High";
     ISHIGH = 1;
