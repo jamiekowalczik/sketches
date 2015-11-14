@@ -1,23 +1,23 @@
-Hydruino Parts List
-
-Quantity	Description	Price	URL
-1	Arduino Mega	$21.00	http://yourduino.com/sunshop2/index.php?l=product_detail&p=387
-1	DHT11	$1.59	http://www.amazon.com/gp/product/B0160IGKW2?keywords=dht11&qid=1447293966&ref_=sr_1_2&sr=8-2
-1	Water Temp Sensor	$2.78	http://www.amazon.com/365buying-DS18B20-Temperature-Sensor-Waterproof/dp/B008HODWBU/ref=sr_1_1?s=pc&ie=UTF8&qid=1447294035&sr=8-1&keywords=water+temp+arduino
-1	Water Level Sensor	$2.67	http://www.newegg.com/Product/Product.aspx?Item=9SIA7BF2K19399&nm_mc=KNC-GoogleMKP-PC&cm_mmc=KNC-GoogleMKP-PC-_-pla-_-Gadgets-_-9SIA7BF2K19399&gclid=CjwKEAiA64uyBRCVmKyT2vuAjzgSJADfINB6qZ87R2R7Z4FZJMZrSKYZC4QgmHM-y2LOF0UO6KtWiRoCtgHw_wcB&gclsrc=aw.ds
-1	DS1307 RTC	$5.00	http://yourduino.com/sunshop2/index.php?l=product_detail&p=278
-1	Bluefruit ez-link	$22.50	http://www.amazon.com/Bluefruit-EZ-Link-Bluetooth-Arduino-Programmer/dp/B00JFJEJEA/ref=sr_1_1?s=car&ie=UTF8&qid=1447294171&sr=8-1&keywords=bluefruit+ez-link
-1	4x20 LCD Display	$10.00	http://yourduino.com/sunshop2/index.php?l=product_detail&p=332
-1	5 button analog keyboard	$6.50	http://yourduino.com/sunshop2/index.php?l=product_detail&p=334
-1	nRF24L01+	$2.45	http://yourduino.com/sunshop2/index.php?l=product_detail&p=188
-			
-			
-1	Perf Board	$5.00	http://www.amazon.com/gp/product/B00NQ3A50S?psc=1&redirect=true&ref_=oh_aui_detailpage_o05_s01
-1	Project Box	$7.45	http://www.amazon.com/Hammond-1591ESBK-ABS-Project-Black/dp/B0002BSRIO/ref=sr_1_1?ie=UTF8&qid=1447294477&sr=8-1&keywords=project+box
-2	3D prints	$10.00	3D Hubs/tinkercad
-20	Ribbon Cables	$2.00	http://www.amazon.com/gp/product/B00AYCON8Y?psc=1&redirect=true&ref_=oh_aui_detailpage_o03_s00
-1	Wire	$2.00	http://www.amazon.com/gp/product/B00N51OU0W?psc=1&redirect=true&ref_=oh_aui_detailpage_o05_s00
-	Solder	$2.00	http://www.amazon.com/gp/product/B00DHHAZ3A?psc=1&redirect=true&ref_=oh_aui_detailpage_o01_s00
-			
-			
-Total		$98.94	
+Quantity	Description	Price	URL				
+1	Arduino Mega	$21.00	http://yourduino.com/sunshop2/index.php?l=product_detail&p=387				
+1	DHT11	$1.59	http://www.amazon.com/gp/product/B0160IGKW2?keywords=dht11&qid=1447293966&ref_=sr_1_2&sr=8-2				
+1	Water Temp Sensor	$2.78	http://www.amazon.com/365buying-DS18B20-Temperature-Sensor-Waterproof/dp/B008HODWBU/ref=sr_1_1?s=pc&ie=UTF8&qid=1447294035&sr=8-1&keywords=water+temp+arduino				
+1	Water Level Sensor	$2.67	http://www.newegg.com/Product/Product.aspx?Item=9SIA7BF2K19399&nm_mc=KNC-GoogleMKP-PC&cm_mmc=KNC-GoogleMKP-PC-_-pla-_-Gadgets-_-9SIA7BF2K19399&gclid=CjwKEAiA64uyBRCVmKyT2vuAjzgSJADfINB6qZ87R2R7Z4FZJMZrSKYZC4QgmHM-y2LOF0UO6KtWiRoCtgHw_wcB&gclsrc=aw.ds				
+1	DS1307 RTC	$5.00	http://yourduino.com/sunshop2/index.php?l=product_detail&p=278				
+1	Bluefruit ez-link	$22.50	http://www.amazon.com/Bluefruit-EZ-Link-Bluetooth-Arduino-Programmer/dp/B00JFJEJEA/ref=sr_1_1?s=car&ie=UTF8&qid=1447294171&sr=8-1&keywords=bluefruit+ez-link				
+1	4x20 LCD Display	$10.00	http://yourduino.com/sunshop2/index.php?l=product_detail&p=332				
+1	5 button analog keyboard	$6.50	http://yourduino.com/sunshop2/index.php?l=product_detail&p=334				
+1	nRF24L01+	$2.45	http://yourduino.com/sunshop2/index.php?l=product_detail&p=188				
+1	Ultrasonic Distance Sensor	$10.00	http://yourduino.com/sunshop2/index.php?l=product_detail&p=115				Save with: http://yourduino.com/sunshop2/index.php?l=product_detail&p=182 -or- http://yourduino.com/sunshop2/index.php?l=product_detail&p=121
+							
+1	Perf Board	$5.00	http://www.amazon.com/gp/product/B00NQ3A50S?psc=1&redirect=true&ref_=oh_aui_detailpage_o05_s01				
+1	Project Box	$7.45	http://www.amazon.com/Hammond-1591ESBK-ABS-Project-Black/dp/B0002BSRIO/ref=sr_1_1?ie=UTF8&qid=1447294477&sr=8-1&keywords=project+box				
+2	3D prints	$10.00	3D Hubs/tinkercad				
+20	Ribbon Cables	$2.00	http://www.amazon.com/gp/product/B00AYCON8Y?psc=1&redirect=true&ref_=oh_aui_detailpage_o03_s00				
+1	Wire	$2.00	http://www.amazon.com/gp/product/B00N51OU0W?psc=1&redirect=true&ref_=oh_aui_detailpage_o05_s00				
+	Solder	$2.00	http://www.amazon.com/gp/product/B00DHHAZ3A?psc=1&redirect=true&ref_=oh_aui_detailpage_o01_s00				
+							
+							
+Total		$108.94					
+							
+							
