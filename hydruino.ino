@@ -84,6 +84,7 @@ char charRoomTemp[20];
 char charRoomHumidity[20];
 byte bRoomTemp, bOldRoomTemp, bRoomHumidity, bOldRoomHumidity;
 float fRoomTemp, fRoomHumidity;
+byte curSonarVal;
 
 genericKeyboard mykb(read_keyboard);
 //alternative to previous but now we can input from Serial too...
@@ -332,7 +333,7 @@ int ISHIGH3 = 0;
 void emptyCmd() {
   lcd.clear();
   delay(1000);
-  readWaterSensor1();
+  readWaterSonarSensor();
   if(ISHIGH1 < 1){
     lcd.clear();
     lcd.setCursor(0,0);
@@ -367,7 +368,7 @@ void emptyCmd() {
       lcd.print("                    ");
     }
     delay(1000);
-    readWaterSensor1();
+    readWaterSonarSensor();
   } while (ISHIGH1 > 0);
 
   lcd.clear();
@@ -392,6 +393,7 @@ void fillCmd() {
   lcd.clear();
   delay(1000);
   readWaterSensor1();
+  readWaterSonarSensor();
   if(ISHIGH1 > 0){
     lcd.clear();
     lcd.setCursor(0,0);
@@ -426,6 +428,7 @@ void fillCmd() {
     }
     delay(1000);
     readWaterSensor1();
+    readWaterSonarSensor();
   } while (ISHIGH1 < 1);
 
   lcd.clear();
@@ -595,14 +598,8 @@ void performAction(unsigned short rawMessage){
    }else if(rawMessage == 95){
     // WATER LEVEL 2//
     radio.stopListening();
-    readWaterSensor2();
-    callback=(short)ISHIGH2;
-    sendCallback(callback);
-   }else if(rawMessage == 96){
-    // WATER LEVEL 3//
-    radio.stopListening();
-    readWaterSensor3();
-    callback=(short)ISHIGH3;
+    readWaterSonarSensor();
+    callback=(short)curSonarVal;
     sendCallback(callback);
    }else{
      callback=999;
@@ -669,7 +666,7 @@ void readWaterSensor1() {
   if(curVal > 425 && curVal < 750){
     curWaterSensor1DepthVal = "High";
     ISHIGH1 = 1;
-  }else if(curVal > 750 || curVal < 2){
+  }else if(curVal > 750){
     curWaterSensor1DepthVal = "Err";
     ISHIGH1 = 2;
   }else{
@@ -678,7 +675,7 @@ void readWaterSensor1() {
   }
   //if(lastWaterSensor1DepthVal != curWaterSensor1DepthVal) {
     if(curWaterSensor1DepthVal == "High"){
-      String strWaterLevelPre = "Water Level 1: ";
+      String strWaterLevelPre = "Water Level: ";
       String strWaterLevel = String(curWaterSensor1DepthVal);
       String strJoinedString = strWaterLevelPre+strWaterLevel;
       byte str_len = strJoinedString.length() + 1;
@@ -691,72 +688,22 @@ void readWaterSensor1() {
   //}
 }
 
-String curWaterSensor2DepthVal, lastWaterSensor2DepthVal;
-char charWaterSensor2Level[20];
-void readWaterSensor2() {
-  int curVal = analogRead(depthAnalog2PinID);
-  Serial.print("Water Level Sensor 2: ");
-  Serial.println(curVal);
-  if(curVal > 425 && curVal < 750){
-    curWaterSensor2DepthVal = "High";
-    ISHIGH2= 1;
-  }else if(curVal > 750 || curVal < 2){
-    curWaterSensor2DepthVal = "Err";
-    ISHIGH2 = 2;
-  }else{
-    curWaterSensor2DepthVal = "Low"; 
-    ISHIGH2 = 0;
-  }
-  if(lastWaterSensor2DepthVal != curWaterSensor2DepthVal) {
-    String strWaterLevelPre = "Water Level 2: ";
-    String strWaterLevel = String(curWaterSensor2DepthVal);
-    String strJoinedString = strWaterLevelPre+strWaterLevel;
-    byte str_len = strJoinedString.length() + 1;
-    charWaterSensor2Level[str_len];
-    strJoinedString.toCharArray(charWaterSensor2Level, str_len);
-    subMenuSensorData.data[WATERLEVEL]->text = charWaterSensor2Level;
-    lastWaterSensor2DepthVal = curWaterSensor2DepthVal;
-    subMenuSensorData.redraw(menu_lcd,allIn);
-  }
-}
-
-String curWaterSensor3DepthVal, lastWaterSensor3DepthVal;
-char charWaterSensor3Level[20];
-void readWaterSensor3() {
-  int curVal = analogRead(depthAnalog3PinID);
-  Serial.print("Water Level Sensor 3: ");
-  Serial.println(curVal);
-  if(curVal > 425 && curVal < 750){
-    curWaterSensor3DepthVal = "High";
-    ISHIGH3 = 1;
-  }else if(curVal > 750 || curVal < 2){
-    curWaterSensor3DepthVal = "Err";
-    ISHIGH3 = 2;
-  }else{
-    curWaterSensor3DepthVal = "Low"; 
-    ISHIGH3 = 0;
-  }
-  if(lastWaterSensor3DepthVal != curWaterSensor3DepthVal) {
-    String strWaterLevelPre = "Water Level 3: ";
-    String strWaterLevel = String(curWaterSensor3DepthVal);
-    String strJoinedString = strWaterLevelPre+strWaterLevel;
-    byte str_len = strJoinedString.length() + 1;
-    charWaterSensor3Level[str_len];
-    strJoinedString.toCharArray(charWaterSensor3Level, str_len);
-    subMenuSensorData.data[2]->text = charWaterSensor3Level;
-    lastWaterSensor3DepthVal = curWaterSensor3DepthVal;
-    subMenuSensorData.redraw(menu_lcd,allIn);
-  }
-}
-
 String curWaterSonarSensorDepthVal, lastWaterSonarSensorDepthVal;
 char charWaterSonarSensorLevel[20];
 void readWaterSonarSensor(){
   int curVal = sonar.ping_cm();
+  curSonarVal = curVal;
   Serial.print("Water Level Sonar Sensor: ");
   Serial.print(curVal);
   Serial.println("cm");
   curWaterSonarSensorDepthVal = (String)curVal;
+  if(curVal < 5){
+    ISHIGH1 = 1;
+  }else if(curVal >10){
+    ISHIGH1 = 0;
+  }else if(curVal < 2 || curVal > 150){
+    ISHIGH1 = 2;
+  }
   if(lastWaterSonarSensorDepthVal != curWaterSonarSensorDepthVal) {
     String strWaterLevelPre = "Water Level: ";
     String strWaterLevel = curWaterSonarSensorDepthVal;
