@@ -20,6 +20,7 @@
 #include "dht.h"
 #include <Thread.h>
 #include <EEPROMex.h>
+#include <NewPing.h>
 
 // Pin Definitions
 #define pinEnter A3
@@ -38,6 +39,10 @@
 #define depthAnalog3PinID 0
 #define ONE_WIRE_BUS 4
 #define DHTPIN 3
+#define TRIGGER_PIN  9  // Arduino pin tied to trigger pin on the ultrasonic sensor.
+#define ECHO_PIN     8  // Arduino pin tied to echo pin on the ultrasonic sensor.
+#define MAX_DISTANCE 200 // Maximum distance we want to ping for (in centimeters). Maximum sensor distance is rated at 400-500cm.
+
 
 byte DHTTYPE = 0;
 
@@ -93,6 +98,7 @@ void nothing() {}
 RTC_DS1307 rtc;    // Create a RealTimeClock object
 OneWire ourWire(ONE_WIRE_BUS);
 DallasTemperature sensors(&ourWire);
+NewPing sonar(TRIGGER_PIN, ECHO_PIN, MAX_DISTANCE); // NewPing setup of pins and maximum distance.
 
 Thread t_LCDUpdate = Thread();
 Thread t_readRF24 = Thread();
@@ -102,6 +108,7 @@ Thread t_WaterSensor2Depth = Thread();
 Thread t_WaterSensor3Depth = Thread();
 Thread t_AirSensorTempHumidity = Thread();
 Thread t_Timestamp = Thread();
+Thread t_readSonar = Thread();
 
 ////// MENU
 
@@ -139,9 +146,7 @@ CHOOSE(bRetVal,some_sample,"Choice: ",
 );
 
 MENU(subMenuSensorData,"Sensor Data",
-   OP("Water Level 1: ",nothing),
-   OP("Water Level 2: ",nothing),
-   OP("Water Level 3: ",nothing),
+   OP("Water Level: ",nothing),
    OP("Water Temp: ",nothing),
    OP("Room Temp: ",nothing),
    OP("Humidity: ",nothing)
@@ -625,6 +630,8 @@ void loopRadio() {
    }
 }
 
+byte WATERLEVEL=0, WATERTEMP=1, AIRTEMP=2, AIRHUMIDITY=3;
+
 void readSensorTemperature() {
   sensors.requestTemperatures();
   bWaterTemp = sensors.getTempFByIndex(0);
@@ -638,7 +645,7 @@ void readSensorTemperature() {
     str_len = strJoinedString.length() + 1;
     charWaterTemp[str_len];
     strJoinedString.toCharArray(charWaterTemp, str_len);
-    subMenuSensorData.data[3]->text = charWaterTemp;
+    subMenuSensorData.data[WATERTEMP]->text = charWaterTemp;
     bOldWaterTemp = bWaterTemp;
     subMenuSensorData.redraw(menu_lcd,allIn);
   }else if(bOldWaterTemp != bWaterTemp && (bWaterTemp == 185 || bWaterTemp == -196)){
@@ -647,7 +654,7 @@ void readSensorTemperature() {
     str_len = strJoinedString.length() + 1;
     charWaterTemp[str_len];
     strJoinedString.toCharArray(charWaterTemp, str_len);
-    subMenuSensorData.data[3]->text = charWaterTemp;
+    subMenuSensorData.data[WATERTEMP]->text = charWaterTemp;
     bOldWaterTemp = bWaterTemp;
     subMenuSensorData.redraw(menu_lcd,allIn);
   }
@@ -662,24 +669,26 @@ void readWaterSensor1() {
   if(curVal > 425 && curVal < 750){
     curWaterSensor1DepthVal = "High";
     ISHIGH1 = 1;
-  }else if(curVal > 750){
+  }else if(curVal > 750 || curVal < 2){
     curWaterSensor1DepthVal = "Err";
     ISHIGH1 = 2;
   }else{
     curWaterSensor1DepthVal = "Low"; 
     ISHIGH1 = 0;
   }
-  if(lastWaterSensor1DepthVal != curWaterSensor1DepthVal) {
-    String strWaterLevelPre = "Water Level 1: ";
-    String strWaterLevel = String(curWaterSensor1DepthVal);
-    String strJoinedString = strWaterLevelPre+strWaterLevel;
-    byte str_len = strJoinedString.length() + 1;
-    charWaterSensor1Level[str_len];
-    strJoinedString.toCharArray(charWaterSensor1Level, str_len);
-    subMenuSensorData.data[0]->text = charWaterSensor1Level;
-    lastWaterSensor1DepthVal = curWaterSensor1DepthVal;
-    subMenuSensorData.redraw(menu_lcd,allIn);
-  }
+  //if(lastWaterSensor1DepthVal != curWaterSensor1DepthVal) {
+    if(curWaterSensor1DepthVal == "High"){
+      String strWaterLevelPre = "Water Level 1: ";
+      String strWaterLevel = String(curWaterSensor1DepthVal);
+      String strJoinedString = strWaterLevelPre+strWaterLevel;
+      byte str_len = strJoinedString.length() + 1;
+      charWaterSensor1Level[str_len];
+      strJoinedString.toCharArray(charWaterSensor1Level, str_len);
+      subMenuSensorData.data[WATERLEVEL]->text = charWaterSensor1Level;
+      lastWaterSensor1DepthVal = curWaterSensor1DepthVal;
+      subMenuSensorData.redraw(menu_lcd,allIn);
+    }
+  //}
 }
 
 String curWaterSensor2DepthVal, lastWaterSensor2DepthVal;
@@ -691,7 +700,7 @@ void readWaterSensor2() {
   if(curVal > 425 && curVal < 750){
     curWaterSensor2DepthVal = "High";
     ISHIGH2= 1;
-  }else if(curVal > 750){
+  }else if(curVal > 750 || curVal < 2){
     curWaterSensor2DepthVal = "Err";
     ISHIGH2 = 2;
   }else{
@@ -705,7 +714,7 @@ void readWaterSensor2() {
     byte str_len = strJoinedString.length() + 1;
     charWaterSensor2Level[str_len];
     strJoinedString.toCharArray(charWaterSensor2Level, str_len);
-    subMenuSensorData.data[1]->text = charWaterSensor2Level;
+    subMenuSensorData.data[WATERLEVEL]->text = charWaterSensor2Level;
     lastWaterSensor2DepthVal = curWaterSensor2DepthVal;
     subMenuSensorData.redraw(menu_lcd,allIn);
   }
@@ -720,7 +729,7 @@ void readWaterSensor3() {
   if(curVal > 425 && curVal < 750){
     curWaterSensor3DepthVal = "High";
     ISHIGH3 = 1;
-  }else if(curVal > 750){
+  }else if(curVal > 750 || curVal < 2){
     curWaterSensor3DepthVal = "Err";
     ISHIGH3 = 2;
   }else{
@@ -736,6 +745,27 @@ void readWaterSensor3() {
     strJoinedString.toCharArray(charWaterSensor3Level, str_len);
     subMenuSensorData.data[2]->text = charWaterSensor3Level;
     lastWaterSensor3DepthVal = curWaterSensor3DepthVal;
+    subMenuSensorData.redraw(menu_lcd,allIn);
+  }
+}
+
+String curWaterSonarSensorDepthVal, lastWaterSonarSensorDepthVal;
+char charWaterSonarSensorLevel[20];
+void readWaterSonarSensor(){
+  int curVal = sonar.ping_cm();
+  Serial.print("Water Level Sonar Sensor: ");
+  Serial.print(curVal);
+  Serial.println("cm");
+  curWaterSonarSensorDepthVal = (String)curVal;
+  if(lastWaterSonarSensorDepthVal != curWaterSonarSensorDepthVal) {
+    String strWaterLevelPre = "Water Level: ";
+    String strWaterLevel = curWaterSonarSensorDepthVal;
+    String strJoinedString = strWaterLevelPre+strWaterLevel+"cm";
+    byte str_len = strJoinedString.length() + 1;
+    charWaterSonarSensorLevel[str_len];
+    strJoinedString.toCharArray(charWaterSonarSensorLevel, str_len);
+    subMenuSensorData.data[WATERLEVEL]->text = charWaterSonarSensorLevel;
+    lastWaterSonarSensorDepthVal = curWaterSonarSensorDepthVal;
     subMenuSensorData.redraw(menu_lcd,allIn);
   }
 }
@@ -773,7 +803,7 @@ void readRoomTemperatureAndHumidity() {
       str_len = strJoinedString.length() + 1;
       charRoomTemp[str_len];
       strJoinedString.toCharArray(charRoomTemp, str_len);
-      subMenuSensorData.data[4]->text = charRoomTemp;
+      subMenuSensorData.data[AIRTEMP]->text = charRoomTemp;
       bOldRoomTemp = bRoomTemp;
       subMenuSensorData.redraw(menu_lcd,allIn);
     }
@@ -784,7 +814,7 @@ void readRoomTemperatureAndHumidity() {
       str_len = strJoinedString.length() + 1;
       charRoomHumidity[str_len];
       strJoinedString.toCharArray(charRoomHumidity, str_len);
-      subMenuSensorData.data[5]->text = charRoomHumidity;
+      subMenuSensorData.data[AIRHUMIDITY]->text = charRoomHumidity;
       bOldRoomHumidity = bRoomHumidity;
       subMenuSensorData.redraw(menu_lcd,allIn);
     }
@@ -798,7 +828,7 @@ void readRoomTemperatureAndHumidity() {
     str_len = strJoinedString.length() + 1;
     charRoomTemp[str_len];
     strJoinedString.toCharArray(charRoomTemp, str_len);
-    subMenuSensorData.data[4]->text = charRoomTemp;
+    subMenuSensorData.data[AIRTEMP]->text = charRoomTemp;
     bOldRoomTemp = bRoomTemp;
     subMenuSensorData.redraw(menu_lcd,allIn);
   }
@@ -810,7 +840,7 @@ void readRoomTemperatureAndHumidity() {
     str_len = strJoinedString.length() + 1;
     charRoomHumidity[str_len];
     strJoinedString.toCharArray(charRoomHumidity, str_len);
-    subMenuSensorData.data[5]->text = charRoomHumidity;
+    subMenuSensorData.data[AIRHUMIDITY]->text = charRoomHumidity;
     bOldRoomHumidity = bRoomHumidity;
     subMenuSensorData.redraw(menu_lcd,allIn);
   }
@@ -900,17 +930,14 @@ void setup() {
   t_WaterSensor1Depth.onRun(readWaterSensor1);
   t_WaterSensor1Depth.setInterval(1500);
 
-  t_WaterSensor2Depth.onRun(readWaterSensor2);
-  t_WaterSensor2Depth.setInterval(1500);
-  
-  t_WaterSensor3Depth.onRun(readWaterSensor3);
-  t_WaterSensor3Depth.setInterval(1500);
-
   t_AirSensorTempHumidity.onRun(readRoomTemperatureAndHumidity);
   t_AirSensorTempHumidity.setInterval(3000);
 
   t_Timestamp.onRun(showTime);
   t_Timestamp.setInterval(500);
+
+  t_readSonar.onRun(readWaterSonarSensor);
+  t_readSonar.setInterval(1000);
   
   radio.begin();
   radio.setAutoAck(1); // Ensure autoACK is enabled
@@ -939,10 +966,8 @@ void loop() {
       t_WaterSensorTemp.run();
     if(t_WaterSensor1Depth.shouldRun())
       t_WaterSensor1Depth.run();
-    if(t_WaterSensor2Depth.shouldRun())
-      t_WaterSensor2Depth.run();
-    if(t_WaterSensor3Depth.shouldRun())
-      t_WaterSensor3Depth.run();
+    if(t_readSonar.shouldRun())
+      t_readSonar.run();
     if(t_AirSensorTempHumidity.shouldRun())
       t_AirSensorTempHumidity.run();
   }else if(sCurMenu == "Main"){
