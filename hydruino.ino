@@ -90,8 +90,10 @@ byte xeeLowSetPoint, xeeHighSetPoint, addrLowSetPoint = 60, addrHighSetPoint = 7
 
 genericKeyboard mykb(read_keyboard);
 //alternative to previous but now we can input from Serial too...
-Stream* in2[]={&mykb,&Serial};
-chainStream<2> allIn(in2);
+//Stream* in2[]={&mykb,&Serial};
+//chainStream<2> allIn(in2);
+Stream* in2[]={&mykb};
+chainStream<1> allIn(in2);
 
 LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE);  // Set the LCD I2C address
 menuLCD menu_lcd(lcd,20,4);//menu output device
@@ -384,6 +386,8 @@ void emptyCmd() {
   int curStatus = 0;
   int dots = 0;
   do{
+    lcd.setCursor(0,0);
+    lcd.print(F("Emptying Reservoir  "));
     if(curStatus == 0){
       UpdateEmptyStatus(curStatus);
       curStatus = 1;
@@ -443,6 +447,8 @@ void fillCmd() {
     
   byte curStatus = 0, dots = 0;
   do{
+    lcd.setCursor(0,0);
+    lcd.print(F("Filling Reservoir   "));
     if(curStatus == 0){
       UpdateFillStatus(curStatus);
       curStatus = 1;
@@ -573,35 +579,43 @@ void performAction(unsigned short rawMessage){
     sendCallback(callback);
     emptyCmd();
    }else if(rawMessage == 83){
+     relay1Val = 1;
      saveConfigRelay1(1);
      digitalWrite(pinRelay1, HIGH);
      sendCallback(0);
    }else if(rawMessage == 84){
+     relay2Val = 1;
      saveConfigRelay2(1);
      digitalWrite(pinRelay2, HIGH);
      sendCallback(0);
    }else if(rawMessage == 85){
-     saveConfigRelay2(1);
+     relay3Val = 1;
+     saveConfigRelay3(1);
      digitalWrite(pinRelay3, HIGH);
      sendCallback(0);
    }else if(rawMessage == 86){
-     saveConfigRelay2(1);
+     relay4Val = 1;
+     saveConfigRelay4(1);
      digitalWrite(pinRelay4, HIGH);
      sendCallback(0);
    }else if(rawMessage == 87){
+     relay1Val = 0;
      saveConfigRelay1(0);
      digitalWrite(pinRelay1, LOW);
      sendCallback(0);
    }else if(rawMessage == 88){
+     relay2Val = 0;
      saveConfigRelay2(0);
      digitalWrite(pinRelay2, LOW);
      sendCallback(0);
    }else if(rawMessage == 89){
-     saveConfigRelay2(0);
+     relay3Val = 0;
+     saveConfigRelay3(0);
      digitalWrite(pinRelay3, LOW);
      sendCallback(0);
    }else if(rawMessage == 90){
-     saveConfigRelay2(0);
+     relay4Val = 0;
+     saveConfigRelay4(0);
      digitalWrite(pinRelay4, LOW);
      sendCallback(0);
    }else if(rawMessage == 91){
@@ -730,9 +744,9 @@ char charWaterSonarSensorLevel[20];
 void readWaterSonarSensor(){
   int curVal = sonar.ping_cm();
   curSonarVal = curVal;
-  Serial.print("Water Level Sonar Sensor: ");
-  Serial.print(curVal);
-  Serial.println("cm");
+  ///Serial.print("Water Level Sonar Sensor: ");
+  ///Serial.print(curVal);
+  ///Serial.println("cm");
   curWaterSonarSensorDepthVal = (String)curVal;
   if(curVal < highSetPoint){
     ISHIGH1 = 1;
