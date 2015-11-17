@@ -39,8 +39,8 @@
 #define depthAnalog3PinID 0
 #define ONE_WIRE_BUS 4
 #define DHTPIN 3
-#define TRIGGER_PIN  9  // Arduino pin tied to trigger pin on the ultrasonic sensor.
-#define ECHO_PIN     8  // Arduino pin tied to echo pin on the ultrasonic sensor.
+#define TRIGGER_PIN  29  // Arduino pin tied to trigger pin on the ultrasonic sensor.
+#define ECHO_PIN     28  // Arduino pin tied to echo pin on the ultrasonic sensor.
 #define MAX_DISTANCE 200 // Maximum distance we want to ping for (in centimeters). Maximum sensor distance is rated at 400-500cm.
 
 
@@ -87,6 +87,7 @@ float fRoomTemp, fRoomHumidity;
 byte curSonarVal;
 byte lowSetPoint, lastLowSetPoint, highSetPoint, lastHighSetPoint;
 byte xeeLowSetPoint, xeeHighSetPoint, addrLowSetPoint = 60, addrHighSetPoint = 70;
+String sCurMenu, sPrevMenu;
 
 genericKeyboard mykb(read_keyboard);
 //alternative to previous but now we can input from Serial too...
@@ -764,7 +765,10 @@ void readWaterSonarSensor(){
     strJoinedString.toCharArray(charWaterSonarSensorLevel, str_len);
     subMenuSensorData.data[WATERLEVEL]->text = charWaterSonarSensorLevel;
     lastWaterSonarSensorDepthVal = curWaterSonarSensorDepthVal;
-    subMenuSensorData.redraw(menu_lcd,allIn);
+    sCurMenu = ((menu*)menuNode::activeNode)->text;
+    if (sCurMenu == "Sensor Data") {
+       subMenuSensorData.redraw(menu_lcd,allIn); 
+    }
   }
 }
 
@@ -955,7 +959,6 @@ void updateLCD(){
   mainMenu.poll(menu_lcd,allIn);
 }
 
-String sCurMenu, sPrevMenu;
 void loop() {
   if(t_LCDUpdate.shouldRun())
       t_LCDUpdate.run();
