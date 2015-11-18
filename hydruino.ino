@@ -43,7 +43,6 @@
 #define ECHO_PIN     28  // Arduino pin tied to echo pin on the ultrasonic sensor.
 #define MAX_DISTANCE 200 // Maximum distance we want to ping for (in centimeters). Maximum sensor distance is rated at 400-500cm.
 
-
 byte DHTTYPE = 0;
 
 //Variables containing data we want to keep persistent
@@ -53,9 +52,7 @@ byte ConfigID;
 char charWaterTemp[20];
 byte bWaterTemp, bOldWaterTemp;
 
-byte xeeConfigID;
 byte addrConfigID = 10;
-byte xeeRelay1;
 byte addrRelay1 = 20;
 byte pinRelay1 = 5;
 int relay1Val = 0;
@@ -63,16 +60,13 @@ int relay1OldVal = 0;
 byte pinRelay2 = 2;
 int relay2Val = 0;
 int relay2OldVal = 0;
-byte xeeRelay2;
 byte addrRelay2 = 30;
 
-byte xeeRelay3;
 byte addrRelay3 = 40;
 byte pinRelay3 = 6;
 int relay3Val = 0;
 int relay3OldVal = 0;
 
-byte xeeRelay4;
 byte addrRelay4 = 50;
 byte pinRelay4 = 7;
 int relay4Val = 0;
@@ -118,9 +112,11 @@ Thread t_readSonar = Thread();
 
 ////// MENU
 
-TOGGLE(DHTTYPE,dhtTypes,"DHT Types: ",
-    VALUE("DHT11",0, toggleDHTType),
-    VALUE("DHT22",1, toggleDHTType)
+//field value, click to browse, click to choose
+CHOOSE(DHTTYPE,dhtTypes,"DHT Types: ",
+    VALUE("DHT11",0,toggleDHTType),
+    VALUE("DHT21",2,toggleDHTType),
+    VALUE("DHT22",1,toggleDHTType)
 );
 
 TOGGLE(relay1Val,relay1Menu,"Relay 1: ",
@@ -143,14 +139,6 @@ TOGGLE(relay4Val,relay4Menu,"Relay 4: ",
     VALUE("Off",0, toggleRelay4)
 );
 
-byte bRetVal;
-//field value, click to browse, click to choose
-CHOOSE(bRetVal,some_sample,"Choice: ",
-    VALUE("A",0,nothing),
-    VALUE("B",1,nothing),
-    VALUE("C",2,nothing)
-);
-
 MENU(subMenuSensorData,"Sensor Data",
    OP("Water Level: ",nothing),
    OP("Water Temp: ",nothing),
@@ -164,8 +152,7 @@ MENU(actionMenu,"Action",
    SUBMENU(relay1Menu),
    SUBMENU(relay2Menu),
    SUBMENU(relay3Menu),
-   SUBMENU(relay4Menu),
-   SUBMENU(some_sample)
+   SUBMENU(relay4Menu)
 );
 
 byte bHour, bMinute, bDay, bMonth;
@@ -197,11 +184,11 @@ void toggleRelay1(){
   Serial.println(relay1Val);
   if(relay1Val == 0){
     relay1OldVal = 0;
-    saveConfigRelay1(0);
+    saveEEPROMVAR(addrRelay1,relay1OldVal);
     digitalWrite(pinRelay1, LOW);
   }else{
     relay1OldVal = 1;
-    saveConfigRelay1(1);
+    saveEEPROMVAR(addrRelay1,relay1OldVal);
     digitalWrite(pinRelay1, HIGH);
   }
 }
@@ -209,11 +196,11 @@ void toggleRelay1(){
 void toggleRelay2(){
   if(relay2Val == 0){
     relay2OldVal = 0;
-    saveConfigRelay2(0);
+    saveEEPROMVAR(addrRelay2,relay2OldVal);
     digitalWrite(pinRelay2, LOW);
   }else{
     relay2OldVal = 1;
-    saveConfigRelay2(1);
+    saveEEPROMVAR(addrRelay2,relay2OldVal);
     digitalWrite(pinRelay2, HIGH);
   }
 }
@@ -221,11 +208,11 @@ void toggleRelay2(){
 void toggleRelay3(){
   if(relay3Val == 0){
     relay3OldVal = 0;
-    saveConfigRelay3(0);
+    saveEEPROMVAR(addrRelay3,relay3OldVal);
     digitalWrite(pinRelay3, LOW);
   }else{
     relay3OldVal = 1;
-    saveConfigRelay3(1);
+    saveEEPROMVAR(addrRelay3,relay3OldVal);
     digitalWrite(pinRelay3, HIGH);
   }
 }
@@ -233,97 +220,77 @@ void toggleRelay3(){
 void toggleRelay4(){
   if(relay4Val == 0){
     relay4OldVal = 0;
-    saveConfigRelay4(0);
+    saveEEPROMVAR(addrRelay4,relay4OldVal);
     digitalWrite(pinRelay4, LOW);
   }else{
     relay4OldVal = 1;
-    saveConfigRelay4(1);
+    saveEEPROMVAR(addrRelay4,relay4OldVal);
     digitalWrite(pinRelay4, HIGH);
   }
 }
 
 void toggleDHTType() {
   if (DHTTYPE != xeeLastDHTType) {
-    saveDHTType();
+    saveEEPROMVAR(addrDHTType,DHTTYPE);
     xeeLastDHTType = DHTTYPE;
   }
 }
 
-void saveConfigID(byte i) {
-  xeeConfigID = byte(i);
-  EEPROM.write(addrConfigID, xeeConfigID);
+void updateConfigID() {
+  if (ConfigID != lastConfigID) {
+    saveEEPROMVAR(addrConfigID,ConfigID);
+    lastConfigID = ConfigID;
+  }
 }
 
-void saveHighSetPoint(byte i) {
-  xeeHighSetPoint = byte(i);
-  EEPROM.write(addrHighSetPoint, xeeHighSetPoint);
+void updateHighSetPoint() {
+  if (highSetPoint != lastHighSetPoint) {
+    saveEEPROMVAR(addrHighSetPoint,highSetPoint);
+    lastHighSetPoint = highSetPoint;
+  }
 }
 
-void saveLowSetPoint(byte i) {
-  xeeLowSetPoint = byte(i);
-  EEPROM.write(addrLowSetPoint, xeeLowSetPoint);
+void updateLowSetPoint() {
+  if (lowSetPoint != lastLowSetPoint) {
+    saveEEPROMVAR(addrLowSetPoint,lowSetPoint);
+    lastLowSetPoint = lowSetPoint;
+  }
 }
 
-void saveConfigRelay1(byte i) {
-  xeeRelay1 = byte(i);
-  EEPROM.write(addrRelay1,xeeRelay1);
+void saveEEPROMVAR(byte eepromAddress, byte eepromValue) {
+  EEPROM.write(eepromAddress, eepromValue);
 }
-
-void saveConfigRelay2(byte i) {
-  xeeRelay2 = byte(i);
-  EEPROM.write(addrRelay2,xeeRelay2);
-}
-
-void saveConfigRelay3(byte i) {
-  xeeRelay3 = byte(i);
-  EEPROM.write(addrRelay3,xeeRelay3);
-}
-
-void saveConfigRelay4(byte i) {
-  xeeRelay4 = byte(i);
-  EEPROM.write(addrRelay4,xeeRelay4);
-}
-
-void saveDHTType(){
-  EEPROM.write(addrDHTType, DHTTYPE);
-}
-
 
 dht DHT;
 void readConfig() {
-  xeeConfigID = EEPROM.read(addrConfigID);
-  ConfigID = byte(xeeConfigID);
+  ConfigID = EEPROM.read(addrConfigID);
   if (ConfigID < 0 || ConfigID >99){
      ConfigID = 0;
   }
   lastConfigID = ConfigID;
 
-  xeeRelay1 = EEPROM.read(addrRelay1);
-  relay1Val = byte(xeeRelay1);
+  relay1Val = EEPROM.read(addrRelay1);
   if (relay1Val == 0) {
      digitalWrite(pinRelay1, LOW);
   }else if(relay1Val == 1) {
      digitalWrite(pinRelay1, HIGH);
   }
 
-  xeeRelay2 = EEPROM.read(addrRelay2);
-  relay2Val = byte(xeeRelay2);
+  relay2Val = EEPROM.read(addrRelay2);
   if (relay2Val == 0) {
      digitalWrite(pinRelay2, LOW);
   }else if(relay2Val == 1) {
      digitalWrite(pinRelay2, HIGH);
   }
 
-  xeeRelay3 = EEPROM.read(addrRelay3);
-  relay3Val = byte(xeeRelay3);
+  relay3Val = EEPROM.read(addrRelay3);
   if (relay3Val == 0) {
      digitalWrite(pinRelay3, LOW);
   }else if(relay3Val == 1) {
      digitalWrite(pinRelay3, HIGH);
   }
 
-  xeeRelay4 = EEPROM.read(addrRelay4);
-  relay4Val = byte(xeeRelay4);
+  relay4Val = EEPROM.read(addrRelay4);
   if (relay4Val == 0) {
      digitalWrite(pinRelay4, LOW);
   }else if(relay4Val == 1) {
@@ -337,29 +304,6 @@ void readConfig() {
   highSetPoint = byte(xeeHighSetPoint);
 
   DHTTYPE = EEPROM.read(addrDHTType);
-}
-
-void updateConfigID() {
-  if (ConfigID != lastConfigID) {
-    saveConfigID(ConfigID);
-    lastConfigID = ConfigID;
-  }
-}
-
-void updateHighSetPoint() {
-  if (highSetPoint != lastHighSetPoint) {
-    saveHighSetPoint(highSetPoint);
-    lastHighSetPoint = highSetPoint;
-  }
-}
-
-void updateLowSetPoint() {
-  Serial.println("updating low set point");
-  if (lowSetPoint != lastLowSetPoint) {
-    Serial.println("Saving new low set point");
-    saveLowSetPoint(lowSetPoint);
-    lastLowSetPoint = lowSetPoint;
-  }
 }
 
 int ISHIGH1 = 0;
@@ -379,7 +323,7 @@ void emptyCmd() {
     lcd.setCursor(0,0);
     lcd.print(F("Emptying Reservoir  "));
     relay1Val = 1;
-    saveConfigRelay1(1);
+    saveEEPROMVAR(addrRelay1,relay1Val);
     digitalWrite(pinRelay1, HIGH);
   }
     
@@ -414,7 +358,7 @@ void emptyCmd() {
   lcd.print(F(" ****Completed****  "));
 
   relay1Val = 0;
-  saveConfigRelay1(0);
+  saveEEPROMVAR(addrRelay1,relay1Val);
   digitalWrite(pinRelay1, LOW);
   delay(2000);
   mainMenu.focus(1);
@@ -441,7 +385,7 @@ void fillCmd() {
     lcd.setCursor(0,0);
     lcd.print(F("Filling Reservoir   "));
     relay2Val = 1;
-    saveConfigRelay2(1);
+    saveEEPROMVAR(addrRelay2,relay2Val);
     digitalWrite(pinRelay2, HIGH);
   }
     
@@ -476,7 +420,7 @@ void fillCmd() {
   lcd.print(F(" ****Completed****  "));
 
   relay2Val = 0;
-  saveConfigRelay2(0);
+  saveEEPROMVAR(addrRelay2,relay2Val);
   digitalWrite(pinRelay2, LOW);
   delay(2000);
   mainMenu.focus(1);
@@ -580,42 +524,42 @@ void performAction(unsigned short rawMessage){
     emptyCmd();
    }else if(rawMessage == 83){
      relay1Val = 1;
-     saveConfigRelay1(1);
+     saveEEPROMVAR(addrRelay1,relay1Val);
      digitalWrite(pinRelay1, HIGH);
      sendCallback(0);
    }else if(rawMessage == 84){
      relay2Val = 1;
-     saveConfigRelay2(1);
+     saveEEPROMVAR(addrRelay2,relay2Val);
      digitalWrite(pinRelay2, HIGH);
      sendCallback(0);
    }else if(rawMessage == 85){
      relay3Val = 1;
-     saveConfigRelay3(1);
+     saveEEPROMVAR(addrRelay3,relay3Val);
      digitalWrite(pinRelay3, HIGH);
      sendCallback(0);
    }else if(rawMessage == 86){
      relay4Val = 1;
-     saveConfigRelay4(1);
+     saveEEPROMVAR(addrRelay4,relay4Val);
      digitalWrite(pinRelay4, HIGH);
      sendCallback(0);
    }else if(rawMessage == 87){
      relay1Val = 0;
-     saveConfigRelay1(0);
+     saveEEPROMVAR(addrRelay1,relay1Val);
      digitalWrite(pinRelay1, LOW);
      sendCallback(0);
    }else if(rawMessage == 88){
      relay2Val = 0;
-     saveConfigRelay2(0);
+     saveEEPROMVAR(addrRelay2,relay2Val);
      digitalWrite(pinRelay2, LOW);
      sendCallback(0);
    }else if(rawMessage == 89){
      relay3Val = 0;
-     saveConfigRelay3(0);
+     saveEEPROMVAR(addrRelay3,relay3Val);
      digitalWrite(pinRelay3, LOW);
      sendCallback(0);
    }else if(rawMessage == 90){
      relay4Val = 0;
-     saveConfigRelay4(0);
+     saveEEPROMVAR(addrRelay4,relay4Val);
      digitalWrite(pinRelay4, LOW);
      sendCallback(0);
    }else if(rawMessage == 91){
@@ -781,6 +725,8 @@ void readRoomTemperatureAndHumidity() {
     DHT.read11(DHTPIN);
   }else if(DHTTYPE == 1){
     DHT.read22(DHTPIN);
+  }else if(DHTTYPE == 2){
+    DHT.read21(DHTPIN);
   }
   float fRoomHumidity = DHT.humidity;
   //float fRoomTemp = dht.readTemperature(true);
@@ -900,8 +846,11 @@ void showTime() {
     cDateTime[str_len];
     strJoinedString.toCharArray(cDateTime, str_len);
 
-    mainMenu.data[0]->text = cDateTime;
-    mainMenu.redraw(menu_lcd,allIn); 
+    if(sCurMenu == "Main"){
+       mainMenu.data[0]->text = cDateTime;
+       mainMenu.redraw(menu_lcd,allIn); 
+    }
+   
   }
 }
 
