@@ -43,7 +43,7 @@
 #define ECHO_PIN     28  // Arduino pin tied to echo pin on the ultrasonic sensor.
 #define MAX_DISTANCE 200 // Maximum distance we want to ping for (in centimeters). Maximum sensor distance is rated at 400-500cm.
 
-byte DHTTYPE = 0;
+byte DHTTYPE;
 
 //Variables containing data we want to keep persistent
 byte lastConfigID;
@@ -80,7 +80,7 @@ byte bRoomTemp, bOldRoomTemp, bRoomHumidity, bOldRoomHumidity;
 float fRoomTemp, fRoomHumidity;
 byte curSonarVal;
 byte lowSetPoint, lastLowSetPoint, highSetPoint, lastHighSetPoint;
-byte xeeLowSetPoint, xeeHighSetPoint, addrLowSetPoint = 60, addrHighSetPoint = 70;
+byte addrLowSetPoint = 60, addrHighSetPoint = 70;
 String sCurMenu, sPrevMenu;
 
 genericKeyboard mykb(read_keyboard);
@@ -233,6 +233,7 @@ void toggleDHTType() {
   if (DHTTYPE != xeeLastDHTType) {
     saveEEPROMVAR(addrDHTType,DHTTYPE);
     xeeLastDHTType = DHTTYPE;
+    Serial.println(xeeLastDHTType);
   }
 }
 
@@ -297,13 +298,12 @@ void readConfig() {
      digitalWrite(pinRelay4, HIGH);
   }
 
-  xeeLowSetPoint = EEPROM.read(addrLowSetPoint);
-  lowSetPoint = byte(xeeLowSetPoint);
+  lowSetPoint = EEPROM.read(addrLowSetPoint);
 
-  xeeHighSetPoint = EEPROM.read(addrHighSetPoint);
-  highSetPoint = byte(xeeHighSetPoint);
+  highSetPoint = EEPROM.read(addrHighSetPoint);
 
   DHTTYPE = EEPROM.read(addrDHTType);
+  Serial.println(DHTTYPE);
 }
 
 int ISHIGH1 = 0;
@@ -624,8 +624,6 @@ byte WATERLEVEL=0, WATERTEMP=1, AIRTEMP=2, AIRHUMIDITY=3;
 void readSensorTemperature() {
   sensors.requestTemperatures();
   bWaterTemp = sensors.getTempFByIndex(0);
-  Serial.print("Water Temp Sensor: ");
-  Serial.println(bWaterTemp);
   String strWaterTempPre = "Water Temp: ", strWaterTemp, strJoinedString;
   byte str_len;
   if(bOldWaterTemp != bWaterTemp && bWaterTemp != 185 && bWaterTemp != -196) {
@@ -653,8 +651,6 @@ String curWaterSensor1DepthVal, lastWaterSensor1DepthVal;
 char charWaterSensor1Level[20];
 void readWaterSensor1() {
   int curVal = analogRead(depthAnalog1PinID);
-  Serial.print("Water Level Sensor 1: ");
-  Serial.println(curVal);
   if(curVal > 425 && curVal < 750){
     curWaterSensor1DepthVal = "High";
     ISHIGH1 = 1;
@@ -688,9 +684,6 @@ char charWaterSonarSensorLevel[20];
 void readWaterSonarSensor(){
   int curVal = sonar.ping_cm();
   curSonarVal = curVal;
-  ///Serial.print("Water Level Sonar Sensor: ");
-  ///Serial.print(curVal);
-  ///Serial.println("cm");
   curWaterSonarSensorDepthVal = (String)curVal;
   if(curVal < highSetPoint){
     ISHIGH1 = 1;
