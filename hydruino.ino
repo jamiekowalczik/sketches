@@ -78,8 +78,8 @@ byte pinRelay4 = 7;
 int relay4Val = 0;
 int relay4OldVal = 0;
 
-byte xeeDHTType = 0, xeeLastDHTType = 0;
-byte addrDHTType = 80;
+byte xeeLastDHTType = 0;
+byte addrDHTType = 55;
 char charRoomTemp[20];
 char charRoomHumidity[20];
 byte bRoomTemp, bOldRoomTemp, bRoomHumidity, bOldRoomHumidity;
@@ -244,7 +244,7 @@ void toggleRelay4(){
 
 void toggleDHTType() {
   if (DHTTYPE != xeeLastDHTType) {
-    saveDHTType(DHTTYPE);
+    saveDHTType();
     xeeLastDHTType = DHTTYPE;
   }
 }
@@ -280,13 +280,12 @@ void saveConfigRelay3(byte i) {
 }
 
 void saveConfigRelay4(byte i) {
-  xeeRelay2 = byte(i);
+  xeeRelay4 = byte(i);
   EEPROM.write(addrRelay4,xeeRelay4);
 }
 
-void saveDHTType(byte i){
-  xeeDHTType = byte(i);
-  EEPROM.write(addrDHTType, xeeDHTType);
+void saveDHTType(){
+  EEPROM.write(addrDHTType, DHTTYPE);
 }
 
 
