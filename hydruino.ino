@@ -82,6 +82,10 @@ byte curSonarVal;
 byte lowSetPoint, lastLowSetPoint, highSetPoint, lastHighSetPoint;
 byte addrLowSetPoint = 60, addrHighSetPoint = 70;
 String sCurMenu, sPrevMenu;
+char cDateTime[20], cHourString[20];
+byte bCurMonth, bOldMonth, bCurDay, bOldDay, bCurHour, bOldHour, bCurMinute, bOldMinute;
+int iCurYear, iOldYear;
+String strTime;
 
 genericKeyboard mykb(read_keyboard);
 //alternative to previous but now we can input from Serial too...
@@ -155,14 +159,12 @@ MENU(actionMenu,"Action",
    SUBMENU(relay4Menu)
 );
 
-byte bHour, bMinute, bDay, bMonth;
-int iYear;
 MENU(setDateTimeMenu,"Set Date/Time",
-   FIELD(bHour,"Hour","",0,23,-10,-1,updateRTC),
-   FIELD(bMinute,"Minute","",0,59,-10,-1,updateRTC),
-   FIELD(bMonth,"Month","",1,12,-10,-1,updateRTC),
-   FIELD(bDay,"Day","",1,31,-10,-1,updateRTC),
-   FIELD(iYear,"Year","",2015,3015,-10,-1,updateRTC)
+   FIELD(bCurHour,"Hour","",0,23,-10,-1,updateRTC),
+   FIELD(bCurMinute,"Minute","",0,59,-10,-1,updateRTC),
+   FIELD(bCurMonth,"Month","",1,12,-10,-1,updateRTC),
+   FIELD(bCurDay,"Day","",1,31,-10,-1,updateRTC),
+   FIELD(iCurYear,"Year","",2015,3015,-10,-1,updateRTC)
 );
 
 MENU(setupMenu,"Setup",
@@ -307,8 +309,6 @@ void readConfig() {
 }
 
 int ISHIGH1 = 0;
-int ISHIGH2 = 0;
-int ISHIGH3 = 0;
 
 void emptyCmd() {
   lcd.clear();
@@ -433,12 +433,8 @@ void UpdateFillStatus(byte iStatus){
   lcd.print(FillStatus[iStatus]);
 }
 
-byte updateWaterTempAlarm() {
-  return 1;
-}
-
 void updateRTC(){
-  setTime(bHour,bMinute,0,bDay,bMonth,iYear);
+  setTime(bCurHour,bCurMinute,0,bCurDay,bCurMonth,iCurYear);
   rtc.adjust(DateTime(now()));
   showTime();
 }
@@ -734,11 +730,6 @@ void readRoomTemperatureAndHumidity() {
   bRoomTemp = (int) fRoomTemp;
   bRoomHumidity = (int) fRoomHumidity;
 
-  Serial.print("Air Temp: ");
-  Serial.println(bRoomTemp);
-  Serial.print("Humidity: ");
-  Serial.println(bRoomHumidity);
-
   if (isnan(fRoomHumidity) || isnan(fRoomTemp)) {
     bRoomTemp = 0;
     if(bRoomTemp != bOldRoomTemp) {
@@ -790,9 +781,6 @@ void readRoomTemperatureAndHumidity() {
   }
 }
 
-char cDateTime[20], cHourString[20];
-byte bCurMonth, bOldMonth, bCurDay, bOldDay, bCurHour, bOldHour, bCurMinute, bOldMinute;
-int iCurYear, iOldYear;
 void showTime() {
   DateTime now = rtc.now();  // Read data from the RTC Chip
   iCurYear = now.year();
@@ -806,12 +794,6 @@ void showTime() {
     bOldDay = bCurDay;
     bOldHour = bCurHour;
     bOldMinute = bCurMinute;
-
-    iYear = iCurYear;
-    bMonth = bCurMonth;
-    bDay = bCurDay;
-    bHour = bCurHour;
-    bMinute = bCurMinute;
     
     String AMPM = " AM";
     if(bCurHour > 12){
@@ -831,13 +813,10 @@ void showTime() {
       sCurMinute = String(bCurMinute);
     }
     
-    String strTime = String(bCurHour)+":"+sCurMinute+AMPM+" "+bCurMonth+"/"+bCurDay+"/"+iCurYear;
-    Serial.print("Current Time: ");
-    Serial.println(strTime);
-    String strJoinedString = strTime;
-    byte str_len = strJoinedString.length() + 1;
+    strTime = String(bCurHour)+":"+sCurMinute+AMPM+" "+bCurMonth+"/"+bCurDay+"/"+iCurYear;
+    byte str_len = strTime.length() + 1;
     cDateTime[str_len];
-    strJoinedString.toCharArray(cDateTime, str_len);
+    strTime.toCharArray(cDateTime, str_len);
 
     if(sCurMenu == "Main"){
        mainMenu.data[0]->text = cDateTime;
