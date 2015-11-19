@@ -72,7 +72,7 @@ byte pinRelay4 = 7;
 int relay4Val = 0;
 int relay4OldVal = 0;
 
-byte xeeLastDHTType = 0;
+byte xeeLastDHTType;
 byte addrDHTType = 55;
 char charRoomTemp[20];
 char charRoomHumidity[20];
@@ -118,9 +118,9 @@ Thread t_readSonar = Thread();
 
 //field value, click to browse, click to choose
 CHOOSE(DHTTYPE,dhtTypes,"DHT Types: ",
-    VALUE("DHT11",0,toggleDHTType),
+    VALUE("DHT11",1,toggleDHTType),
     VALUE("DHT21",2,toggleDHTType),
-    VALUE("DHT22",1,toggleDHTType)
+    VALUE("DHT22",3,toggleDHTType)
 );
 
 TOGGLE(relay1Val,relay1Menu,"Relay 1: ",
@@ -710,13 +710,14 @@ double Fahrenheit(double celsius){
 
 void readRoomTemperatureAndHumidity() {
   //float fRoomHumidity = dht.readHumidity();
-  if(DHTTYPE == 0){
+  if(DHTTYPE == 1){
     DHT.read11(DHTPIN);
-  }else if(DHTTYPE == 1){
-    DHT.read22(DHTPIN);
   }else if(DHTTYPE == 2){
     DHT.read21(DHTPIN);
+  }else if(DHTTYPE == 3){
+    DHT.read22(DHTPIN);
   }
+  
   float fRoomHumidity = DHT.humidity;
   //float fRoomTemp = dht.readTemperature(true);
   float cRoomTemp = DHT.temperature;
